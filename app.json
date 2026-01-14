@@ -31,7 +31,15 @@
       "expo-router"
     ],
     "scheme": "premioclick",
-    "schemes": ["premioclick", "sorteosapp"]
+    "schemes": [
+      "premioclick",
+      "sorteosapp"
+    ],
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "efbfd83b-3d35-4c2c-9d60-91d74b8d1847"
+      }
+    }
   }
 }
-
