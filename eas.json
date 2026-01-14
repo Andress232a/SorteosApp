@@ -9,9 +9,7 @@
       "distribution": "internal"
     },
     "preview": {
-      "distribution": "internal",
-      "node": "20.x",
-      "npm": "latest"
+      "distribution": "internal"
     },
     "production": {
       "autoIncrement": true
