@@ -47,41 +47,58 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           console.log('🔍 Rol del usuario:', userData.rol);
           setUser(userData);
         } catch (verifyError: any) {
-          // Si hay error de conexión, simplemente no autenticamos
-          if (verifyError.code !== 'ERR_CANCELED') {
-            await AsyncStorage.removeItem('token');
-            delete api.defaults.headers.common['Authorization'];
+          // Si hay error de conexión, simplemente no autenticamos pero no crasheamos
+          console.log('⚠️ Error al verificar token (puede ser problema de conexión):', verifyError.message);
+          if (verifyError.code !== 'ERR_CANCELED' && verifyError.code !== 'ERR_NETWORK' && verifyError.code !== 'ECONNABORTED') {
+            // Solo eliminar token si es un error de autenticación, no de conexión
+            if (verifyError.response?.status === 401 || verifyError.response?.status === 403) {
+              await AsyncStorage.removeItem('token');
+              delete api.defaults.headers.common['Authorization'];
+            }
           }
         } finally {
           clearTimeout(timeoutId);
         }
       }
-    } catch (error) {
-      // Error al leer AsyncStorage o cualquier otro error
-      console.log('Auth check error:', error);
+    } catch (error: any) {
+      // Error al leer AsyncStorage o cualquier otro error - no crashear
+      console.log('⚠️ Auth check error (no crítico):', error?.message || error);
     } finally {
       setLoading(false);
     }
   };
 
   const login = async (email: string, password: string) => {
-    const response = await api.post('/auth/login', { email, password });
-    const { token, user } = response.data;
-    
-    await AsyncStorage.setItem('token', token);
-    api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-    setUser(user);
-    return user; // Retornar el usuario para que el login pueda verificar el rol
+    try {
+      const response = await api.post('/auth/login', { email, password });
+      const { token, user } = response.data;
+      
+      await AsyncStorage.setItem('token', token);
+      api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      setUser(user);
+      return user; // Retornar el usuario para que el login pueda verificar el rol
+    } catch (error: any) {
+      console.error('Error en login:', error);
+      throw new Error(error.response?.data?.error || 'Error al iniciar sesión. Verifica tu conexión.');
+    }
   };
 
   const register = async (nombre: string, email: string, password: string, telefono?: string) => {
-    const response = await api.post('/auth/register', { nombre, email, password, telefono });
-    const { token, user } = response.data;
-    
-    await AsyncStorage.setItem('token', token);
-    api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-    setUser(user);
-    return user; // Retornar el usuario para que el registro pueda verificar el rol
+    try {
+      const response = await api.post('/auth/register', { nombre, email, password, telefono });
+      const { token, user } = response.data;
+      
+      await AsyncStorage.setItem('token', token);
+      api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      setUser(user);
+      return user; // Retornar el usuario para que el registro pueda verificar el rol
+    } catch (error: any) {
+      console.error('Error en register:', error);
+      const errorMessage = error.response?.data?.error || 
+                          (error.response?.data?.errors ? error.response.data.errors.map((e: any) => e.msg).join(', ') : null) ||
+                          'Error al registrarse. Verifica tu conexión.';
+      throw new Error(errorMessage);
+    }
   };
 
   const logout = async () => {
