@@ -1,5 +1,9 @@
 // Configuración
-const API_URL = window.location.origin.replace(/:\d+$/, ':3001') + '/api';
+// Detectar si estamos en producción (Vercel) o desarrollo local
+const isProduction = window.location.hostname.includes('vercel.app') || window.location.hostname.includes('railway.app') || window.location.hostname.includes('render.com');
+const API_URL = isProduction 
+    ? window.location.origin + '/api'  // En producción, usar la misma URL sin puerto
+    : window.location.origin.replace(/:\d+$/, ':3001') + '/api';  // En desarrollo, usar puerto 3001
 let currentFilter = 'todos';
 let currentUser = null;
 let socket = null;
@@ -255,7 +259,9 @@ async function register(nombre, email, password, telefono) {
 // Inicializar Socket.io
 function initSocket() {
     const token = getAuthToken();
-    const socketUrl = window.location.origin.replace(/:\d+$/, ':3001');
+    const socketUrl = isProduction 
+        ? window.location.origin
+        : window.location.origin.replace(/:\d+$/, ':3001');
     
     socket = io(socketUrl, {
         auth: token ? { token } : {}

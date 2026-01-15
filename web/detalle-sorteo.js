@@ -1,5 +1,8 @@
 // Configuración
-const API_URL = window.location.origin.replace(/:\d+$/, ':3001') + '/api';
+const isProduction = window.location.hostname.includes('vercel.app') || window.location.hostname.includes('railway.app') || window.location.hostname.includes('render.com');
+const API_URL = isProduction 
+    ? window.location.origin + '/api'
+    : window.location.origin.replace(/:\d+$/, ':3001') + '/api';
 let sorteo = null;
 let imagenes = [];
 let imagenActual = 0;
