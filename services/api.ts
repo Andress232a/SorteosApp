@@ -6,7 +6,7 @@ import { Platform } from 'react-native';
 // En desarrollo: usa tu IP local
 // En producción: usa la URL de tu servidor
 const LOCAL_IP = '192.168.1.48'; // IP local para desarrollo
-const PRODUCTION_API_URL = 'https://tu-servidor.com/api'; // Cambia esto por tu URL de producción
+const PRODUCTION_API_URL = 'https://sorteos-app-orcin.vercel.app/api'; // URL de producción en Vercel
 
 // Para emulador Android usa 10.0.2.2, para dispositivo físico usa tu IP
 const getApiUrl = () => {
