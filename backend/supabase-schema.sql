@@ -23,7 +23,8 @@ CREATE TABLE IF NOT EXISTS sorteos (
   created_by INTEGER REFERENCES usuarios(id) ON DELETE SET NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  imagenes TEXT
+  imagenes TEXT,
+  link VARCHAR(500)
 );
 
 -- Tabla productos

@@ -67,13 +67,32 @@ router.post('/generar/:sorteoId', authenticateToken, async (req, res) => {
     }
 
     // Insertar tickets en lotes para evitar problemas con grandes cantidades
+    const { DB_TYPE } = require('../config/database');
     const batchSize = 100;
+    
     for (let i = 0; i < tickets.length; i += batchSize) {
       const batch = tickets.slice(i, i + batchSize);
-      await pool.query(
-        'INSERT INTO tickets (sorteo_id, numero_ticket, precio) VALUES ?',
-        [batch]
-      );
+      
+      if (DB_TYPE === 'postgres') {
+        // PostgreSQL: insertar en lotes usando múltiples VALUES con placeholders $1, $2, etc.
+        const values = batch.map((_, idx) => {
+          const paramStart = idx * 3 + 1;
+          return `($${paramStart}, $${paramStart + 1}, $${paramStart + 2})`;
+        }).join(', ');
+        
+        const params = batch.flat();
+        // Usar pool.query directamente porque ya tenemos placeholders $1, $2, etc.
+        await pool.query(
+          `INSERT INTO tickets (sorteo_id, numero_ticket, precio) VALUES ${values}`,
+          params
+        );
+      } else {
+        // MySQL: usar VALUES ? con array de arrays
+        await pool.execute(
+          'INSERT INTO tickets (sorteo_id, numero_ticket, precio) VALUES ?',
+          [batch]
+        );
+      }
     }
 
     res.status(201).json({ 
@@ -101,7 +120,12 @@ router.get('/sorteo/:sorteoId', async (req, res) => {
     }
 
     // Ordenar por número de ticket (ordenar numéricamente)
-    query += ` ORDER BY CAST(numero_ticket AS UNSIGNED) ASC, numero_ticket ASC`;
+    const { DB_TYPE } = require('../config/database');
+    if (DB_TYPE === 'postgres') {
+      query += ` ORDER BY CAST(numero_ticket AS INTEGER) ASC, numero_ticket ASC`;
+    } else {
+      query += ` ORDER BY CAST(numero_ticket AS UNSIGNED) ASC, numero_ticket ASC`;
+    }
 
     const [tickets] = await pool.execute(query, params);
 
@@ -136,8 +160,10 @@ router.get('/disponibles/:sorteoId', async (req, res) => {
     const { sorteoId } = req.params;
     const { limite = 10 } = req.query;
 
+    const { DB_TYPE } = require('../config/database');
+    const orderBy = DB_TYPE === 'postgres' ? 'RANDOM()' : 'RAND()';
     const [tickets] = await pool.execute(
-      'SELECT * FROM tickets WHERE sorteo_id = ? AND estado = "disponible" ORDER BY RAND() LIMIT ?',
+      `SELECT * FROM tickets WHERE sorteo_id = ? AND estado = 'disponible' ORDER BY ${orderBy} LIMIT ?`,
       [sorteoId, parseInt(limite)]
     );
 
@@ -154,8 +180,10 @@ router.post('/reservar', authenticateToken, async (req, res) => {
     const { sorteoId, cantidad = 1 } = req.body;
 
     // Obtener tickets disponibles de forma aleatoria
+    const { DB_TYPE } = require('../config/database');
+    const orderBy = DB_TYPE === 'postgres' ? 'RANDOM()' : 'RAND()';
     const [tickets] = await pool.execute(
-      'SELECT * FROM tickets WHERE sorteo_id = ? AND estado = "disponible" ORDER BY RAND() LIMIT ?',
+      `SELECT * FROM tickets WHERE sorteo_id = ? AND estado = 'disponible' ORDER BY ${orderBy} LIMIT ?`,
       [sorteoId, cantidad]
     );
 
@@ -221,14 +249,16 @@ router.delete('/sorteo/:sorteoId', authenticateToken, async (req, res) => {
       return res.status(403).json({ error: 'No tienes permisos para eliminar tickets' });
     }
 
+    const { DB_TYPE } = require('../config/database');
     const [result] = await pool.execute(
-      'DELETE FROM tickets WHERE sorteo_id = ? AND estado = "disponible"',
-      [sorteoId]
+      'DELETE FROM tickets WHERE sorteo_id = ? AND estado = ?',
+      [sorteoId, 'disponible']
     );
 
+    const eliminados = DB_TYPE === 'postgres' ? result.rowCount : result.affectedRows;
     res.json({ 
-      message: `${result.affectedRows} tickets eliminados correctamente`,
-      eliminados: result.affectedRows
+      message: `${eliminados} tickets eliminados correctamente`,
+      eliminados
     });
   } catch (error) {
     console.error('Error al eliminar tickets:', error);
