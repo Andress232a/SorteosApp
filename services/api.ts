@@ -2,27 +2,28 @@ import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 
-// ⚠️ IMPORTANTE: Cambia esta IP por la IP de tu computadora
-// Para encontrar tu IP:
-// Windows: ipconfig (busca "IPv4 Address")
-// Mac/Linux: ifconfig o ip addr
-// Ejemplo: 'http://192.168.1.100:3001/api'
-const LOCAL_IP = '192.168.1.48'; // IP configurada: 192.168.1.48
+// ⚠️ IMPORTANTE: Configuración de API
+// En desarrollo: usa tu IP local
+// En producción: usa la URL de tu servidor
+const LOCAL_IP = '192.168.1.48'; // IP local para desarrollo
+const PRODUCTION_API_URL = 'https://tu-servidor.com/api'; // Cambia esto por tu URL de producción
 
 // Para emulador Android usa 10.0.2.2, para dispositivo físico usa tu IP
 const getApiUrl = () => {
-  // Usar IP local tanto en desarrollo como en producción
-  // En producción, asegúrate de que el dispositivo esté en la misma red WiFi
-  if (Platform.OS === 'android') {
-    // Por defecto usar IP local (dispositivo físico)
-    // Si estás en emulador, cambia esto a 'http://10.0.2.2:3001/api'
+  // Si hay una variable de entorno o constante de producción, usarla
+  // De lo contrario, usar IP local para desarrollo
+  if (__DEV__) {
+    // Modo desarrollo: usar IP local
+    if (Platform.OS === 'android') {
+      return `http://${LOCAL_IP}:3001/api`;
+    } else if (Platform.OS === 'ios') {
+      return `http://${LOCAL_IP}:3001/api`;
+    }
     return `http://${LOCAL_IP}:3001/api`;
-  } else if (Platform.OS === 'ios') {
-    // iOS siempre usa IP local
-    return `http://${LOCAL_IP}:3001/api`;
+  } else {
+    // Modo producción: usar URL del servidor
+    return PRODUCTION_API_URL;
   }
-  // Fallback
-  return `http://${LOCAL_IP}:3001/api`;
 };
 
 const API_URL = getApiUrl();
