@@ -128,18 +128,40 @@ router.post('/paypal/create', authenticateToken, async (req, res) => {
       }
 
       // Guardar pago en BD
+      const { DB_TYPE } = require('../config/database');
+      let insertQuery = 'INSERT INTO pagos (usuario_id, monto, metodo_pago, estado, datos_pago) VALUES (?, ?, ?, ?, ?)';
+      
+      if (DB_TYPE === 'postgres') {
+        insertQuery += ' RETURNING id';
+      }
+      
       const [pagoResult] = await pool.execute(
-        'INSERT INTO pagos (usuario_id, monto, metodo_pago, estado, datos_pago) VALUES (?, ?, ?, ?, ?)',
+        insertQuery,
         [req.user.id, monto, 'paypal', 'pendiente', JSON.stringify({ paymentId: payment.id, ticketIds })]
       );
+
+      // Obtener el ID del pago insertado
+      let pagoId;
+      if (DB_TYPE === 'postgres') {
+        pagoId = pagoResult[0]?.id || pagoResult.insertId;
+      } else {
+        pagoId = pagoResult.insertId;
+      }
 
       // Buscar approval URL
       const approvalUrl = payment.links.find(link => link.rel === 'approval_url');
 
+      if (!approvalUrl || !approvalUrl.href) {
+        return res.status(500).json({ 
+          error: 'No se pudo obtener la URL de aprobación de PayPal',
+          details: 'PayPal no devolvió la URL de aprobación'
+        });
+      }
+
       res.json({
         paymentId: payment.id,
         approvalUrl: approvalUrl.href,
-        pagoId: pagoResult.insertId
+        pagoId: pagoId
       });
     });
   } catch (error) {
@@ -238,12 +260,25 @@ router.post('/transbank/create', authenticateToken, async (req, res) => {
     }
 
     // Guardar pago en BD primero
+    const { DB_TYPE } = require('../config/database');
+    let insertQuery = 'INSERT INTO pagos (usuario_id, monto, metodo_pago, estado, datos_pago) VALUES (?, ?, ?, ?, ?)';
+    
+    if (DB_TYPE === 'postgres') {
+      insertQuery += ' RETURNING id';
+    }
+    
     const [pagoResult] = await pool.execute(
-      'INSERT INTO pagos (usuario_id, monto, metodo_pago, estado, datos_pago) VALUES (?, ?, ?, ?, ?)',
+      insertQuery,
       [req.user.id, monto, 'transbank', 'pendiente', JSON.stringify({ ticketIds })]
     );
 
-    const pagoId = pagoResult.insertId;
+    // Obtener el ID del pago insertado
+    let pagoId;
+    if (DB_TYPE === 'postgres') {
+      pagoId = pagoResult[0]?.id || pagoResult.insertId;
+    } else {
+      pagoId = pagoResult.insertId;
+    }
 
     // Crear transacción en Transbank (Webpay Plus)
     const transbankConfig = {
