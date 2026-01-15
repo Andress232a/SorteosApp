@@ -239,9 +239,17 @@ const execute = async (query, params) => {
       let paramIndex = 1;
       const convertedQuery = query.replace(/\?/g, () => `$${paramIndex++}`);
       const result = await pool.query(convertedQuery, params);
+      // Agregar insertId para compatibilidad con MySQL
+      if (result.rows && result.rows.length > 0 && result.rows[0].id) {
+        result.insertId = result.rows[0].id;
+      }
       return [result.rows, result.fields];
     } else {
       const result = await pool.query(query, params);
+      // Agregar insertId para compatibilidad con MySQL
+      if (result.rows && result.rows.length > 0 && result.rows[0].id) {
+        result.insertId = result.rows[0].id;
+      }
       return [result.rows, result.fields];
     }
   } else {
@@ -262,4 +270,4 @@ const db = {
   DB_TYPE
 };
 
-module.exports = { pool, initializeDatabase, query: queryMethod, execute, getConnection: pool.getConnection, DB_TYPE };
+module.exports = { pool, initializeDatabase, query: queryMethod, execute, getConnection: pool.getConnection, DB_TYPE, pool };

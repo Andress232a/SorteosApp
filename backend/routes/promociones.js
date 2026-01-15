@@ -52,15 +52,29 @@ router.post('/', authenticateToken, [
     }
 
     // Crear promoción
+    // En PostgreSQL necesitamos usar RETURNING id
+    const { DB_TYPE } = require('../config/database');
+    let insertQuery = 'INSERT INTO promociones (sorteo_id, cantidad_tickets, precio_total, descuento) VALUES (?, ?, ?, ?)';
+    
+    if (DB_TYPE === 'postgres') {
+      insertQuery += ' RETURNING id';
+    }
+    
+    // Calcular descuento (si aplica)
+    const descuento = 0; // Puedes calcularlo si es necesario
+    
     const [result] = await pool.execute(
-      'INSERT INTO promociones (sorteo_id, cantidad_tickets, precio, descripcion) VALUES (?, ?, ?, ?)',
-      [sorteo_id, cantidad_tickets, precio, descripcion || null]
+      insertQuery,
+      [sorteo_id, cantidad_tickets, precio, descuento]
     );
+
+    // Obtener el ID de la promoción creada
+    const promocionId = DB_TYPE === 'postgres' ? (result[0]?.id || result.insertId) : result.insertId;
 
     // Obtener la promoción creada
     const [promociones] = await pool.execute(
       'SELECT * FROM promociones WHERE id = ?',
-      [result.insertId]
+      [promocionId]
     );
 
     res.status(201).json(promociones[0]);

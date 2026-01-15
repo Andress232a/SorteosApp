@@ -170,12 +170,32 @@ router.post('/', authenticateToken, [
     const imagenesJson = imagenesArray.length > 0 ? JSON.stringify(imagenesArray) : null;
 
     // Crear sorteo
+    // En PostgreSQL necesitamos usar RETURNING id, en MySQL usamos insertId
+    const { DB_TYPE } = require('../config/database');
+    let insertQuery = 'INSERT INTO sorteos (titulo, descripcion, fecha_sorteo, imagenes, link, created_by) VALUES (?, ?, ?, ?, ?, ?)';
+    
+    if (DB_TYPE === 'postgres') {
+      insertQuery += ' RETURNING id';
+    }
+    
     const [result] = await pool.execute(
-      'INSERT INTO sorteos (titulo, descripcion, fecha_sorteo, imagenes, link, created_by) VALUES (?, ?, ?, ?, ?, ?)',
+      insertQuery,
       [titulo, descripcion || null, fecha_sorteo, imagenesJson, link || null, req.user.id]
     );
 
-    const sorteoId = result.insertId;
+    // Obtener el ID del sorteo creado
+    // En PostgreSQL, el resultado está en result[0].id después de RETURNING
+    // En MySQL, está en result.insertId
+    let sorteoId;
+    if (DB_TYPE === 'postgres') {
+      sorteoId = result[0]?.id || result.insertId;
+    } else {
+      sorteoId = result.insertId;
+    }
+    
+    if (!sorteoId) {
+      throw new Error('No se pudo obtener el ID del sorteo creado');
+    }
 
     // Crear productos
     if (productos && productos.length > 0) {

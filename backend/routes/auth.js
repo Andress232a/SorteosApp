@@ -35,13 +35,24 @@ router.post('/register', [
     const hashedPassword = await bcrypt.hash(password, 10);
 
     // Crear usuario
+    // En PostgreSQL necesitamos usar RETURNING id
+    const { DB_TYPE } = require('../config/database');
+    let insertQuery = 'INSERT INTO usuarios (nombre, email, password, telefono) VALUES (?, ?, ?, ?)';
+    
+    if (DB_TYPE === 'postgres') {
+      insertQuery += ' RETURNING id';
+    }
+    
     const [result] = await pool.execute(
-      'INSERT INTO usuarios (nombre, email, password, telefono) VALUES (?, ?, ?, ?)',
+      insertQuery,
       [nombre, email, hashedPassword, telefono || null]
     );
 
+    // Obtener el ID del usuario creado
+    const userId = DB_TYPE === 'postgres' ? (result[0]?.id || result.insertId) : result.insertId;
+
     const token = jwt.sign(
-      { userId: result.insertId },
+      { userId },
       process.env.JWT_SECRET || 'tu_secret_key_super_segura_aqui',
       { expiresIn: '7d' }
     );
@@ -49,7 +60,7 @@ router.post('/register', [
     // Obtener el usuario con su rol
     const [newUser] = await pool.execute(
       'SELECT id, nombre, email, rol, telefono FROM usuarios WHERE id = ?',
-      [result.insertId]
+      [userId]
     );
 
     res.status(201).json({
