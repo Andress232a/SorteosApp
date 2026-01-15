@@ -93,17 +93,38 @@ router.put('/usuarios/:id/rol', async (req, res) => {
 // Obtener todos los tickets con información del sorteo
 router.get('/tickets', async (req, res) => {
   try {
-    const [tickets] = await pool.execute(`
-      SELECT 
-        t.*,
-        s.titulo as sorteo_titulo
-      FROM tickets t
-      JOIN sorteos s ON t.sorteo_id = s.id
-      ORDER BY 
-        s.titulo ASC,
-        CAST(SUBSTRING_INDEX(t.numero_ticket, '-', -1) AS UNSIGNED),
-        t.numero_ticket ASC
-    `);
+    const { DB_TYPE } = require('../config/database');
+    
+    let query;
+    if (DB_TYPE === 'postgres') {
+      // PostgreSQL: convertir a INTEGER para ordenar numéricamente
+      query = `
+        SELECT 
+          t.*,
+          s.titulo as sorteo_titulo
+        FROM tickets t
+        JOIN sorteos s ON t.sorteo_id = s.id
+        ORDER BY 
+          s.titulo ASC,
+          CAST(t.numero_ticket AS INTEGER),
+          t.numero_ticket ASC
+      `;
+    } else {
+      // MySQL: convertir a UNSIGNED para ordenar numéricamente
+      query = `
+        SELECT 
+          t.*,
+          s.titulo as sorteo_titulo
+        FROM tickets t
+        JOIN sorteos s ON t.sorteo_id = s.id
+        ORDER BY 
+          s.titulo ASC,
+          CAST(t.numero_ticket AS UNSIGNED),
+          t.numero_ticket ASC
+      `;
+    }
+    
+    const [tickets] = await pool.execute(query);
 
     res.json(tickets);
   } catch (error) {
