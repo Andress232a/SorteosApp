@@ -3,13 +3,28 @@ import { View, ViewStyle } from 'react-native';
 
 // Wrapper seguro para LinearGradient que maneja errores de importación
 let LinearGradient: any = null;
+let isLoaded = false;
 
-try {
-  const linearGradientModule = require('expo-linear-gradient');
-  LinearGradient = linearGradientModule.LinearGradient || linearGradientModule.default?.LinearGradient || linearGradientModule.default;
-} catch (e) {
-  console.warn('expo-linear-gradient no está disponible, usando View como fallback');
+function loadLinearGradient() {
+  if (isLoaded) return;
+  
+  try {
+    const linearGradientModule = require('expo-linear-gradient');
+    if (linearGradientModule) {
+      LinearGradient = linearGradientModule.LinearGradient || 
+                      linearGradientModule.default?.LinearGradient || 
+                      linearGradientModule.default ||
+                      linearGradientModule;
+    }
+    isLoaded = true;
+  } catch (e) {
+    console.warn('expo-linear-gradient no está disponible, usando View como fallback:', e);
+    isLoaded = true;
+  }
 }
+
+// Cargar al importar el módulo
+loadLinearGradient();
 
 interface SafeLinearGradientProps {
   colors: string[];
@@ -20,12 +35,21 @@ interface SafeLinearGradientProps {
 }
 
 export function SafeLinearGradient({ colors, style, start, end, children }: SafeLinearGradientProps) {
-  if (LinearGradient) {
-    return (
-      <LinearGradient colors={colors} style={style} start={start} end={end}>
-        {children}
-      </LinearGradient>
-    );
+  // Intentar cargar de nuevo si no se cargó antes
+  if (!isLoaded) {
+    loadLinearGradient();
+  }
+  
+  if (LinearGradient && typeof LinearGradient === 'function') {
+    try {
+      return (
+        <LinearGradient colors={colors} style={style} start={start} end={end}>
+          {children}
+        </LinearGradient>
+      );
+    } catch (e) {
+      console.warn('Error al renderizar LinearGradient:', e);
+    }
   }
   
   // Fallback a View si LinearGradient no está disponible

@@ -28,8 +28,7 @@
       "usesCleartextTraffic": true
     },
     "plugins": [
-      "expo-router",
-      "expo-linear-gradient"
+      "expo-router"
     ],
     "scheme": "premioclick",
     "schemes": [
