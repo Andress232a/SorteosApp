@@ -16,10 +16,10 @@ if (DB_TYPE === 'postgres') {
     user: process.env.DB_USER,
     password: process.env.DB_PASSWORD,
     database: process.env.DB_NAME,
-    ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : false,
+    ssl: (process.env.DB_SSL === 'true' || process.env.DB_SSL === true) ? { rejectUnauthorized: false } : false,
     max: 10, // connection pool size
     idleTimeoutMillis: 30000,
-    connectionTimeoutMillis: 2000,
+    connectionTimeoutMillis: 10000, // Aumentar timeout para conexiones a Supabase
   });
 
   // Wrapper para hacer las queries compatibles
