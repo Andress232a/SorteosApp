@@ -10,9 +10,24 @@ if (DB_TYPE === 'postgres') {
   // Configuración para PostgreSQL (Supabase)
   const { Pool } = require('pg');
   
+  // Logging para debugging (sin mostrar contraseña completa)
+  console.log('🔍 Configurando PostgreSQL (Supabase):');
+  console.log('  DB_TYPE:', DB_TYPE);
+  console.log('  DB_HOST:', process.env.DB_HOST);
+  console.log('  DB_PORT:', process.env.DB_PORT || 5432);
+  console.log('  DB_USER:', process.env.DB_USER);
+  console.log('  DB_NAME:', process.env.DB_NAME);
+  console.log('  DB_SSL:', process.env.DB_SSL);
+  console.log('  DB_PASSWORD:', process.env.DB_PASSWORD ? '***' + process.env.DB_PASSWORD.slice(-4) : 'NO CONFIGURADA');
+  
+  if (!process.env.DB_HOST || !process.env.DB_USER || !process.env.DB_PASSWORD || !process.env.DB_NAME) {
+    console.error('❌ ERROR: Faltan variables de entorno para PostgreSQL');
+    console.error('  Variables requeridas: DB_HOST, DB_USER, DB_PASSWORD, DB_NAME');
+  }
+  
   pool = new Pool({
     host: process.env.DB_HOST,
-    port: process.env.DB_PORT || 5432,
+    port: parseInt(process.env.DB_PORT || '5432'),
     user: process.env.DB_USER,
     password: process.env.DB_PASSWORD,
     database: process.env.DB_NAME,
@@ -21,18 +36,34 @@ if (DB_TYPE === 'postgres') {
     idleTimeoutMillis: 30000,
     connectionTimeoutMillis: 10000, // Aumentar timeout para conexiones a Supabase
   });
+  
+  // Probar conexión
+  pool.query('SELECT NOW()', (err, res) => {
+    if (err) {
+      console.error('❌ Error al conectar a PostgreSQL:', err.message);
+    } else {
+      console.log('✅ Conexión a PostgreSQL exitosa');
+    }
+  });
 
   // Wrapper para hacer las queries compatibles
   queryMethod = async (query, params) => {
-    // Convertir placeholders de MySQL (?) a PostgreSQL ($1, $2, ...)
-    if (typeof query === 'string' && params && params.length > 0) {
-      let paramIndex = 1;
-      const convertedQuery = query.replace(/\?/g, () => `$${paramIndex++}`);
-      const result = await pool.query(convertedQuery, params);
-      return [result.rows, result.fields];
-    } else {
-      const result = await pool.query(query, params);
-      return [result.rows, result.fields];
+    try {
+      // Convertir placeholders de MySQL (?) a PostgreSQL ($1, $2, ...)
+      if (typeof query === 'string' && params && params.length > 0) {
+        let paramIndex = 1;
+        const convertedQuery = query.replace(/\?/g, () => `$${paramIndex++}`);
+        const result = await pool.query(convertedQuery, params);
+        return [result.rows, result.fields];
+      } else {
+        const result = await pool.query(query, params);
+        return [result.rows, result.fields];
+      }
+    } catch (error) {
+      console.error('Error en queryMethod (PostgreSQL):', error);
+      console.error('Query:', query);
+      console.error('Params:', params);
+      throw error;
     }
   };
 
