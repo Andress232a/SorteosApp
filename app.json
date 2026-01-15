@@ -28,7 +28,8 @@
       "usesCleartextTraffic": true
     },
     "plugins": [
-      "expo-router"
+      "expo-router",
+      "expo-web-browser"
     ],
     "scheme": "premioclick",
     "schemes": [
