@@ -74,3 +74,4 @@ Si hay errores:
 2. Verifica que todas las variables de entorno estén configuradas
 3. Asegúrate de que el "Root Directory" esté configurado como `backend`
 
+

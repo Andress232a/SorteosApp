@@ -81,3 +81,4 @@ Si hay errores:
 3. Asegúrate de que todas las variables de entorno estén configuradas
 4. Verifica que el build se complete correctamente
 
+

@@ -19,3 +19,4 @@ SET password = '$2a$10$l4fACdcPSMpb7IYLJ9yIveq.NaKrhi0z3XccKBzKds1z670LYEimi',
 -- 4. Verificar que se creó/actualizó correctamente
 SELECT id, nombre, email, rol FROM usuarios WHERE email = 'admin@premioclick.com';
 
+

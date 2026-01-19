@@ -22,3 +22,4 @@ HOST=0.0.0.0
 - **DB_HOST**: Cambiado a `aws-1-us-east-1.pooler.supabase.com` (Session Pooler)
 - **DB_USER**: Cambiado a `postgres.acbalohxkapyephaqefm` (con el prefijo del proyecto)
 
+

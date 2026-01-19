@@ -72,3 +72,4 @@ initDatabase();
 // Exportar para Vercel
 module.exports = app;
 
+

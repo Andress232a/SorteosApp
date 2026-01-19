@@ -171,3 +171,4 @@ Deberías ver: `✅ Conectado a PostgreSQL (Supabase)`
 - **Migración de datos**: Si tienes datos en MySQL local, necesitarás exportarlos e importarlos a Supabase
 - **Backup**: Supabase tiene backups automáticos, pero siempre es bueno tener uno manual
 
+

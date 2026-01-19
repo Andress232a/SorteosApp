@@ -11,10 +11,18 @@ function loadLinearGradient() {
   try {
     const linearGradientModule = require('expo-linear-gradient');
     if (linearGradientModule) {
-      LinearGradient = linearGradientModule.LinearGradient || 
-                      linearGradientModule.default?.LinearGradient || 
-                      linearGradientModule.default ||
-                      linearGradientModule;
+      // Intentar diferentes formas de obtener LinearGradient de forma segura
+      if (linearGradientModule.LinearGradient) {
+        LinearGradient = linearGradientModule.LinearGradient;
+      } else if (linearGradientModule.default) {
+        if (linearGradientModule.default.LinearGradient) {
+          LinearGradient = linearGradientModule.default.LinearGradient;
+        } else if (typeof linearGradientModule.default === 'function') {
+          LinearGradient = linearGradientModule.default;
+        }
+      } else if (typeof linearGradientModule === 'function') {
+        LinearGradient = linearGradientModule;
+      }
     }
     isLoaded = true;
   } catch (e) {
