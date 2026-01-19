@@ -3,13 +3,22 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 
 // ⚠️ IMPORTANTE: Configuración de API
-// En desarrollo: usa tu IP local
+// En desarrollo: usa tu IP local (solo si el backend está corriendo localmente)
 // En producción: usa la URL de tu servidor
 const LOCAL_IP = '192.168.1.48'; // IP local para desarrollo
 const PRODUCTION_API_URL = 'https://sorteos-app-orcin.vercel.app/api'; // URL de producción en Vercel
 
+// Variable para forzar uso de producción (útil cuando el backend está desplegado)
+// Cambia a false solo si quieres usar el backend local
+const FORCE_PRODUCTION = true;
+
 // Para emulador Android usa 10.0.2.2, para dispositivo físico usa tu IP
 const getApiUrl = () => {
+  // Si se fuerza producción, siempre usar la URL de producción
+  if (FORCE_PRODUCTION) {
+    return PRODUCTION_API_URL;
+  }
+  
   // Si hay una variable de entorno o constante de producción, usarla
   // De lo contrario, usar IP local para desarrollo
   if (__DEV__) {
