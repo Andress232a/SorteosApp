@@ -49,7 +49,27 @@ router.get('/', async (req, res) => {
         'SELECT * FROM productos WHERE sorteo_id = ? ORDER BY posicion_premio',
         [sorteo.id]
       );
-      sorteo.productos = productos;
+      
+      // Parsear imágenes de cada producto
+      sorteo.productos = productos.map(producto => {
+        if (producto.imagenes) {
+          try {
+            if (typeof producto.imagenes === 'string') {
+              producto.imagenes = JSON.parse(producto.imagenes);
+            } else if (Array.isArray(producto.imagenes)) {
+              producto.imagenes = producto.imagenes;
+            } else {
+              producto.imagenes = [];
+            }
+          } catch (e) {
+            console.error('Error al parsear imágenes del producto:', e);
+            producto.imagenes = [];
+          }
+        } else {
+          producto.imagenes = [];
+        }
+        return producto;
+      });
       
       // Parsear imágenes si existen
       if (sorteo.imagenes) {
@@ -104,7 +124,27 @@ router.get('/:id', async (req, res) => {
       'SELECT * FROM productos WHERE sorteo_id = ? ORDER BY posicion_premio',
       [id]
     );
-    sorteo.productos = productos;
+    
+    // Parsear imágenes de cada producto
+    sorteo.productos = productos.map(producto => {
+      if (producto.imagenes) {
+        try {
+          if (typeof producto.imagenes === 'string') {
+            producto.imagenes = JSON.parse(producto.imagenes);
+          } else if (Array.isArray(producto.imagenes)) {
+            producto.imagenes = producto.imagenes;
+          } else {
+            producto.imagenes = [];
+          }
+        } catch (e) {
+          console.error('Error al parsear imágenes del producto:', e);
+          producto.imagenes = [];
+        }
+      } else {
+        producto.imagenes = [];
+      }
+      return producto;
+    });
     
     // Obtener promociones
     const [promociones] = await pool.execute(
@@ -228,13 +268,19 @@ router.post('/', authenticateToken, [
     // Crear productos
     if (productos && productos.length > 0) {
       for (let producto of productos) {
+        // Convertir array de imágenes a JSON si existe
+        let imagenesJson = null;
+        if (producto.imagenes && Array.isArray(producto.imagenes) && producto.imagenes.length > 0) {
+          imagenesJson = JSON.stringify(producto.imagenes);
+        }
+        
         await pool.execute(
-          'INSERT INTO productos (sorteo_id, nombre, descripcion, imagen_url, posicion_premio) VALUES (?, ?, ?, ?, ?)',
+          'INSERT INTO productos (sorteo_id, nombre, descripcion, imagenes, posicion_premio) VALUES (?, ?, ?, ?, ?)',
           [
             sorteoId,
             producto.nombre,
             producto.descripcion || null,
-            producto.imagen_url || null,
+            imagenesJson,
             producto.posicion_premio || 1
           ]
         );
@@ -321,13 +367,19 @@ router.put('/:id', authenticateToken, async (req, res) => {
       
       // Insertar nuevos productos
       for (const producto of productos) {
+        // Convertir array de imágenes a JSON si existe
+        let imagenesJson = null;
+        if (producto.imagenes && Array.isArray(producto.imagenes) && producto.imagenes.length > 0) {
+          imagenesJson = JSON.stringify(producto.imagenes);
+        }
+        
         await pool.execute(
-          'INSERT INTO productos (sorteo_id, nombre, descripcion, imagen_url, posicion_premio) VALUES (?, ?, ?, ?, ?)',
+          'INSERT INTO productos (sorteo_id, nombre, descripcion, imagenes, posicion_premio) VALUES (?, ?, ?, ?, ?)',
           [
             id,
             producto.nombre,
             producto.descripcion || null,
-            producto.imagen_url || null,
+            imagenesJson,
             producto.posicion_premio || 1
           ]
         );

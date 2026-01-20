@@ -33,7 +33,7 @@ CREATE TABLE IF NOT EXISTS productos (
   sorteo_id INTEGER NOT NULL REFERENCES sorteos(id) ON DELETE CASCADE,
   nombre VARCHAR(255) NOT NULL,
   descripcion TEXT,
-  imagen_url VARCHAR(500),
+  imagenes TEXT, -- Array JSON de imágenes (máximo 5 por producto)
   posicion_premio INTEGER DEFAULT 1,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
