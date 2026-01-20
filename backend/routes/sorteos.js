@@ -268,22 +268,54 @@ router.post('/', authenticateToken, [
     // Crear productos
     if (productos && productos.length > 0) {
       for (let producto of productos) {
-        // Convertir array de imágenes a JSON si existe
-        let imagenesJson = null;
-        if (producto.imagenes && Array.isArray(producto.imagenes) && producto.imagenes.length > 0) {
-          imagenesJson = JSON.stringify(producto.imagenes);
+        try {
+          // Convertir array de imágenes a JSON si existe
+          let imagenesJson = null;
+          if (producto.imagenes && Array.isArray(producto.imagenes) && producto.imagenes.length > 0) {
+            imagenesJson = JSON.stringify(producto.imagenes);
+          }
+          
+          // Intentar insertar con la columna 'imagenes' (nueva estructura)
+          // Si falla porque la columna no existe, usar 'imagen_url' (estructura antigua)
+          try {
+            await pool.execute(
+              'INSERT INTO productos (sorteo_id, nombre, descripcion, imagenes, posicion_premio) VALUES (?, ?, ?, ?, ?)',
+              [
+                sorteoId,
+                producto.nombre,
+                producto.descripcion || null,
+                imagenesJson,
+                producto.posicion_premio || 1
+              ]
+            );
+          } catch (insertError) {
+            // Si falla porque la columna 'imagenes' no existe, usar 'imagen_url'
+            if (insertError.message && (insertError.message.includes('imagenes') || insertError.message.includes('column'))) {
+              console.warn('⚠️ Columna "imagenes" no existe, usando "imagen_url" (estructura antigua). Ejecuta el script SQL para actualizar.');
+              // Si hay imágenes, usar la primera como imagen_url
+              let imagenUrl = null;
+              if (producto.imagenes && Array.isArray(producto.imagenes) && producto.imagenes.length > 0) {
+                imagenUrl = producto.imagenes[0];
+              }
+              await pool.execute(
+                'INSERT INTO productos (sorteo_id, nombre, descripcion, imagen_url, posicion_premio) VALUES (?, ?, ?, ?, ?)',
+                [
+                  sorteoId,
+                  producto.nombre,
+                  producto.descripcion || null,
+                  imagenUrl,
+                  producto.posicion_premio || 1
+                ]
+              );
+            } else {
+              throw insertError;
+            }
+          }
+        } catch (productoError) {
+          console.error('Error al crear producto:', productoError);
+          console.error('Producto que falló:', producto);
+          throw new Error(`Error al crear producto "${producto.nombre}": ${productoError.message}`);
         }
-        
-        await pool.execute(
-          'INSERT INTO productos (sorteo_id, nombre, descripcion, imagenes, posicion_premio) VALUES (?, ?, ?, ?, ?)',
-          [
-            sorteoId,
-            producto.nombre,
-            producto.descripcion || null,
-            imagenesJson,
-            producto.posicion_premio || 1
-          ]
-        );
       }
     }
 
@@ -314,7 +346,13 @@ router.post('/', authenticateToken, [
     res.status(201).json(sorteo);
   } catch (error) {
     console.error('Error al crear sorteo:', error);
-    res.status(500).json({ error: 'Error al crear sorteo' });
+    console.error('Stack:', error.stack);
+    console.error('Request body:', req.body);
+    res.status(500).json({ 
+      error: 'Error al crear sorteo',
+      message: error.message,
+      details: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
   }
 });
 
