@@ -237,6 +237,15 @@ router.get('/:id', async (req, res) => {
     }
 
     const sorteo = sorteos[0];
+    
+    console.log('🔍 ========== GET /sorteos/:id ==========');
+    console.log('🔍 Sorteo ID:', id);
+    console.log('🔍 Sorteo - imagen_portada (raw):', sorteo.imagen_portada);
+    console.log('🔍 Sorteo - tiene imagen_portada?:', !!sorteo.imagen_portada);
+    if (sorteo.imagen_portada) {
+      console.log('🔍 Sorteo - imagen_portada length:', sorteo.imagen_portada.length);
+      console.log('🔍 Sorteo - imagen_portada preview:', sorteo.imagen_portada.substring(0, 100));
+    }
 
     // Obtener productos
     const [productos] = await pool.execute(
@@ -245,23 +254,34 @@ router.get('/:id', async (req, res) => {
     );
     
     // Parsear imágenes de cada producto
-    sorteo.productos = productos.map(producto => {
+    console.log('🔍 Productos encontrados:', productos.length);
+    sorteo.productos = productos.map((producto, index) => {
+      console.log(`🔍 Producto ${index + 1} (${producto.nombre}):`);
+      console.log(`  - imagenes (raw):`, producto.imagenes);
+      console.log(`  - tipo de imagenes:`, typeof producto.imagenes);
+      
       if (producto.imagenes) {
         try {
           if (typeof producto.imagenes === 'string') {
             producto.imagenes = JSON.parse(producto.imagenes);
+            console.log(`  - imagenes parseadas:`, producto.imagenes);
           } else if (Array.isArray(producto.imagenes)) {
             producto.imagenes = producto.imagenes;
+            console.log(`  - imagenes ya es array:`, producto.imagenes);
           } else {
             producto.imagenes = [];
+            console.log(`  - imagenes no es string ni array, establecido como []`);
           }
         } catch (e) {
-          console.error('Error al parsear imágenes del producto:', e);
+          console.error(`❌ Error al parsear imágenes del producto ${index + 1}:`, e);
           producto.imagenes = [];
         }
       } else {
         producto.imagenes = [];
+        console.log(`  - no hay imagenes, establecido como []`);
       }
+      console.log(`  - imagenes final:`, producto.imagenes);
+      console.log(`  - cantidad de imagenes:`, producto.imagenes.length);
       return producto;
     });
     
