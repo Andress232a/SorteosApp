@@ -78,8 +78,26 @@ router.get('/', async (req, res) => {
           sorteos = result[0];
           console.log('✅ Query sin imagen_portada ejecutado exitosamente');
           console.log('🔍 Cantidad de sorteos obtenidos:', sorteos?.length || 0);
-          // Agregar imagen_portada como null
-          sorteos.forEach(s => { s.imagen_portada = null; });
+          
+          // Obtener imagen_portada por separado para cada sorteo
+          console.log('🔍 Obteniendo imagen_portada por separado...');
+          for (let sorteo of sorteos) {
+            try {
+              const [portadaResult] = await pool.execute(
+                'SELECT imagen_portada FROM sorteos WHERE id = ?',
+                [sorteo.id]
+              );
+              if (portadaResult && portadaResult.length > 0) {
+                sorteo.imagen_portada = portadaResult[0].imagen_portada;
+              } else {
+                sorteo.imagen_portada = null;
+              }
+            } catch (portadaError) {
+              console.error(`❌ Error al obtener imagen_portada para sorteo ${sorteo.id}:`, portadaError);
+              sorteo.imagen_portada = null;
+            }
+          }
+          console.log('✅ imagen_portada obtenida para todos los sorteos');
         } catch (error2) {
           console.error('❌ Error también con query sin imagen_portada:');
           console.error('❌ Error message:', error2.message);
