@@ -41,12 +41,22 @@ router.get('/', async (req, res) => {
         sorteos = result[0];
         console.log('✅ Query ejecutado con imagen_portada exitosamente');
         console.log('🔍 Cantidad de sorteos obtenidos:', sorteos?.length || 0);
+        // Verificar que imagen_portada esté presente
+        if (sorteos && sorteos.length > 0) {
+          console.log('🔍 Primer sorteo - imagen_portada:', sorteos[0].imagen_portada ? 'SÍ' : 'NO');
+          console.log('🔍 Primer sorteo - título:', sorteos[0].titulo);
+        }
       } catch (error) {
         console.error('❌ Error al ejecutar query con imagen_portada:');
         console.error('❌ Error message:', error.message);
         console.error('❌ Error code:', error.code);
-        console.error('❌ Error stack:', error.stack);
-        console.log('⚠️ Intentando query sin imagen_portada...');
+        // Si el error es que la columna no existe, usar query sin imagen_portada
+        if (error.message?.includes('column') && error.message?.includes('imagen_portada')) {
+          console.log('⚠️ La columna imagen_portada no existe, usando query sin ella...');
+        } else {
+          console.error('❌ Error stack:', error.stack);
+          console.log('⚠️ Intentando query sin imagen_portada...');
+        }
         
         // Si falla, usar query sin imagen_portada
         const queryWithoutPortada = `

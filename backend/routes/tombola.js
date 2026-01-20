@@ -239,12 +239,35 @@ router.post('/seleccionar-ganadores', authenticateToken, async (req, res) => {
       console.log(`🔍 Procesando ganador ${i + 1}/${ticketsGanadores.length}:`, ticket.numero_ticket);
       
       try {
-        // Insertar ganador
-        await pool.execute(
-          'INSERT INTO ganadores (sorteo_id, ticket_id, producto_id, posicion_premio) VALUES (?, ?, ?, ?)',
-          [sorteo_id, ticket.id, producto_id, producto.posicion_premio]
+        // Verificar si ya existe un ganador para este ticket y producto (evitar duplicados)
+        const [existentes] = await pool.execute(
+          'SELECT id FROM ganadores WHERE sorteo_id = ? AND ticket_id = ? AND producto_id = ?',
+          [sorteo_id, ticket.id, producto_id]
         );
-        console.log(`✅ Ganador ${i + 1} insertado en tabla ganadores`);
+        
+        if (existentes.length > 0) {
+          console.log(`⚠️ El ticket ${ticket.numero_ticket} ya es ganador de este premio, saltando...`);
+          continue;
+        }
+        
+        // Insertar ganador
+        // Nota: Si hay restricción única (sorteo_id, posicion_premio), necesitamos eliminarla primero
+        // Por ahora, intentamos insertar y si falla por restricción única, continuamos
+        try {
+          await pool.execute(
+            'INSERT INTO ganadores (sorteo_id, ticket_id, producto_id, posicion_premio) VALUES (?, ?, ?, ?)',
+            [sorteo_id, ticket.id, producto_id, producto.posicion_premio]
+          );
+          console.log(`✅ Ganador ${i + 1} insertado en tabla ganadores`);
+        } catch (insertError) {
+          // Si es error de restricción única, informar pero continuar
+          if (insertError.code === '23505' || insertError.message?.includes('duplicate key')) {
+            console.log(`⚠️ Ya existe un ganador para este premio (posicion ${producto.posicion_premio}), pero continuamos con otros tickets...`);
+            // Continuar con el siguiente ticket
+            continue;
+          }
+          throw insertError;
+        }
 
         // Marcar ticket como ganador
         await pool.execute(
@@ -261,7 +284,14 @@ router.post('/seleccionar-ganadores', authenticateToken, async (req, res) => {
         });
       } catch (dbError) {
         console.error(`❌ Error al guardar ganador ${i + 1}:`, dbError);
+        console.error('❌ Error code:', dbError.code);
+        console.error('❌ Error message:', dbError.message);
         console.error('❌ Stack:', dbError.stack);
+        // Si es error de restricción única, continuar con el siguiente
+        if (dbError.code === '23505' || dbError.message?.includes('duplicate key')) {
+          console.log(`⚠️ Error de restricción única, continuando con siguiente ticket...`);
+          continue;
+        }
         throw dbError;
       }
     }
