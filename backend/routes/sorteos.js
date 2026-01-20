@@ -8,13 +8,17 @@ const router = express.Router();
 // Obtener todos los sorteos
 router.get('/', async (req, res) => {
   try {
+    console.log('🔍 ========== INICIANDO GET /sorteos ==========');
     const { DB_TYPE } = require('../config/database');
+    console.log('🔍 DB_TYPE:', DB_TYPE);
     
     let query;
+    let sorteos;
+    
     if (DB_TYPE === 'postgres') {
+      console.log('🔍 Usando PostgreSQL');
       // PostgreSQL requiere todas las columnas en GROUP BY
       // Intentar query con imagen_portada primero, si falla usar sin ella
-      let sorteos;
       let queryWithPortada = `
         SELECT s.id, s.titulo, s.descripcion, s.fecha_sorteo, s.estado, 
                s.created_by, s.created_at, s.updated_at, s.imagenes, 
@@ -31,12 +35,19 @@ router.get('/', async (req, res) => {
         ORDER BY s.fecha_sorteo DESC
       `;
       
+      console.log('🔍 Intentando query con imagen_portada...');
       try {
         const result = await pool.execute(queryWithPortada, []);
         sorteos = result[0];
-        console.log('✅ Query ejecutado con imagen_portada');
+        console.log('✅ Query ejecutado con imagen_portada exitosamente');
+        console.log('🔍 Cantidad de sorteos obtenidos:', sorteos?.length || 0);
       } catch (error) {
-        console.log('⚠️ Error con imagen_portada, usando query sin ella:', error.message);
+        console.error('❌ Error al ejecutar query con imagen_portada:');
+        console.error('❌ Error message:', error.message);
+        console.error('❌ Error code:', error.code);
+        console.error('❌ Error stack:', error.stack);
+        console.log('⚠️ Intentando query sin imagen_portada...');
+        
         // Si falla, usar query sin imagen_portada
         const queryWithoutPortada = `
           SELECT s.id, s.titulo, s.descripcion, s.fecha_sorteo, s.estado, 
@@ -51,12 +62,24 @@ router.get('/', async (req, res) => {
                    s.created_by, s.created_at, s.updated_at, s.imagenes, s.link
           ORDER BY s.fecha_sorteo DESC
         `;
-        const result = await pool.execute(queryWithoutPortada, []);
-        sorteos = result[0];
-        // Agregar imagen_portada como null
-        sorteos.forEach(s => { s.imagen_portada = null; });
+        
+        try {
+          const result = await pool.execute(queryWithoutPortada, []);
+          sorteos = result[0];
+          console.log('✅ Query sin imagen_portada ejecutado exitosamente');
+          console.log('🔍 Cantidad de sorteos obtenidos:', sorteos?.length || 0);
+          // Agregar imagen_portada como null
+          sorteos.forEach(s => { s.imagen_portada = null; });
+        } catch (error2) {
+          console.error('❌ Error también con query sin imagen_portada:');
+          console.error('❌ Error message:', error2.message);
+          console.error('❌ Error code:', error2.code);
+          console.error('❌ Error stack:', error2.stack);
+          throw error2;
+        }
       }
     } else {
+      console.log('🔍 Usando MySQL');
       // MySQL permite GROUP BY solo con id
       query = `
         SELECT s.*, 
@@ -69,9 +92,14 @@ router.get('/', async (req, res) => {
         GROUP BY s.id
         ORDER BY s.fecha_sorteo DESC
       `;
-      var [sorteos] = await pool.execute(query, []);
+      console.log('🔍 Ejecutando query MySQL...');
+      const result = await pool.execute(query, []);
+      sorteos = result[0];
+      console.log('✅ Query MySQL ejecutado exitosamente');
+      console.log('🔍 Cantidad de sorteos obtenidos:', sorteos?.length || 0);
     }
 
+    console.log('🔍 Obteniendo productos para cada sorteo...');
     // Obtener productos para cada sorteo
     for (let sorteo of sorteos) {
       const [productos] = await pool.execute(
@@ -120,10 +148,18 @@ router.get('/', async (req, res) => {
       }
     }
 
+    console.log('✅ Todos los sorteos procesados correctamente');
+    console.log('🔍 Total de sorteos a retornar:', sorteos?.length || 0);
+    console.log('🔍 ========== FIN GET /sorteos (ÉXITO) ==========');
     res.json(sorteos);
   } catch (error) {
-    console.error('Error al obtener sorteos:', error);
-    console.error('Stack:', error.stack);
+    console.error('❌ ========== ERROR EN GET /sorteos ==========');
+    console.error('❌ Error completo:', error);
+    console.error('❌ Error message:', error.message);
+    console.error('❌ Error code:', error.code);
+    console.error('❌ Error name:', error.name);
+    console.error('❌ Stack completo:', error.stack);
+    console.error('❌ ========== FIN ERROR ==========');
     res.status(500).json({ 
       error: 'Error al obtener sorteos',
       message: error.message,
