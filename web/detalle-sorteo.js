@@ -64,13 +64,32 @@ async function loadSorteo() {
         
         sorteo = await response.json();
         
-        console.log('🔍 Sorteo recibido del backend:', sorteo);
+        console.log('🔍 ========== SORTEO RECIBIDO DEL BACKEND ==========');
+        console.log('🔍 Sorteo completo:', JSON.stringify(sorteo, null, 2));
         console.log('🔍 Sorteo - imagen_portada:', sorteo.imagen_portada);
-        console.log('🔍 Sorteo - productos:', sorteo.productos);
-        if (sorteo.productos && sorteo.productos.length > 0) {
-            console.log('🔍 Primer producto:', sorteo.productos[0]);
-            console.log('🔍 Primer producto - imagenes:', sorteo.productos[0].imagenes);
+        console.log('🔍 Sorteo - tipo de imagen_portada:', typeof sorteo.imagen_portada);
+        console.log('🔍 Sorteo - tiene imagen_portada?', !!sorteo.imagen_portada);
+        if (sorteo.imagen_portada) {
+            console.log('🔍 Sorteo - longitud imagen_portada:', sorteo.imagen_portada.length);
+            console.log('🔍 Sorteo - preview imagen_portada:', sorteo.imagen_portada.substring(0, 100));
         }
+        console.log('🔍 Sorteo - productos:', sorteo.productos);
+        console.log('🔍 Sorteo - cantidad de productos:', sorteo.productos?.length || 0);
+        if (sorteo.productos && sorteo.productos.length > 0) {
+            sorteo.productos.forEach((producto, index) => {
+                console.log(`🔍 Producto ${index + 1} (${producto.nombre}):`);
+                console.log(`  - imagenes:`, producto.imagenes);
+                console.log(`  - tipo de imagenes:`, typeof producto.imagenes);
+                console.log(`  - es array?:`, Array.isArray(producto.imagenes));
+                if (Array.isArray(producto.imagenes)) {
+                    console.log(`  - cantidad de imagenes:`, producto.imagenes.length);
+                    producto.imagenes.forEach((img, imgIndex) => {
+                        console.log(`    - imagen ${imgIndex + 1}:`, img);
+                    });
+                }
+            });
+        }
+        console.log('🔍 ========== FIN SORTEO RECIBIDO ==========');
         
         // Parsear imágenes
         if (sorteo.imagenes) {

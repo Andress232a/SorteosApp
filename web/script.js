@@ -300,12 +300,19 @@ async function loadSorteos(filter = 'todos') {
         const response = await fetch(`${API_URL}/sorteos`);
         const sorteos = await response.json();
         
-        console.log('🔍 Sorteos recibidos del backend:', sorteos.length);
+        console.log('🔍 ========== SORTEOS RECIBIDOS DEL BACKEND ==========');
+        console.log('🔍 Cantidad de sorteos:', sorteos.length);
         if (sorteos.length > 0) {
-            console.log('🔍 Primer sorteo completo:', sorteos[0]);
+            console.log('🔍 Primer sorteo completo:', JSON.stringify(sorteos[0], null, 2));
             console.log('🔍 Primer sorteo - imagen_portada:', sorteos[0].imagen_portada);
+            console.log('🔍 Primer sorteo - tipo de imagen_portada:', typeof sorteos[0].imagen_portada);
             console.log('🔍 Primer sorteo - tiene imagen_portada?', !!sorteos[0].imagen_portada);
+            console.log('🔍 Primer sorteo - longitud imagen_portada:', sorteos[0].imagen_portada?.length);
+            if (sorteos[0].imagen_portada) {
+                console.log('🔍 Primer sorteo - preview imagen_portada:', sorteos[0].imagen_portada.substring(0, 100));
+            }
         }
+        console.log('🔍 ========== FIN SORTEOS RECIBIDOS ==========');
 
         let filteredSorteos = sorteos;
         if (filter === 'activo') {
