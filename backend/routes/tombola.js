@@ -145,9 +145,14 @@ router.post('/realizar/:sorteoId', authenticateToken, async (req, res) => {
 // Seleccionar ganadores aleatorios (nueva funcionalidad)
 router.post('/seleccionar-ganadores', authenticateToken, async (req, res) => {
   try {
+    console.log('🔍 ========== INICIANDO SELECCIÓN DE GANADORES ==========');
+    console.log('🔍 Request body:', req.body);
+    console.log('🔍 User:', req.user);
+    
     const { sorteo_id, producto_id, cantidad } = req.body;
 
     if (!sorteo_id || !producto_id || !cantidad || cantidad < 1) {
+      console.error('❌ Datos inválidos:', { sorteo_id, producto_id, cantidad });
       return res.status(400).json({ error: 'Datos inválidos' });
     }
 
@@ -181,6 +186,7 @@ router.post('/seleccionar-ganadores', authenticateToken, async (req, res) => {
     const producto = productos[0];
 
     // Obtener SOLO los tickets VENDIDOS del sorteo que no sean ganadores
+    console.log('🔍 Buscando tickets vendidos para sorteo_id:', sorteo_id);
     const [ticketsVendidos] = await pool.execute(`
       SELECT t.*, u.nombre as usuario_nombre, u.email as usuario_email
       FROM tickets t
@@ -192,7 +198,10 @@ router.post('/seleccionar-ganadores', authenticateToken, async (req, res) => {
         )
     `, [sorteo_id, sorteo_id]);
 
+    console.log('🔍 Tickets vendidos encontrados:', ticketsVendidos.length);
+
     if (ticketsVendidos.length === 0) {
+      console.error('❌ No hay tickets vendidos disponibles');
       return res.status(400).json({ error: 'No hay tickets vendidos disponibles para este sorteo' });
     }
 
@@ -224,29 +233,41 @@ router.post('/seleccionar-ganadores', authenticateToken, async (req, res) => {
     const ganadores = [];
 
     // Guardar ganadores en la base de datos
+    console.log('🔍 Guardando ganadores en BD. Cantidad:', ticketsGanadores.length);
     for (let i = 0; i < ticketsGanadores.length; i++) {
       const ticket = ticketsGanadores[i];
+      console.log(`🔍 Procesando ganador ${i + 1}/${ticketsGanadores.length}:`, ticket.numero_ticket);
       
-      // Insertar ganador
-      await pool.execute(
-        'INSERT INTO ganadores (sorteo_id, ticket_id, producto_id, posicion_premio) VALUES (?, ?, ?, ?)',
-        [sorteo_id, ticket.id, producto_id, producto.posicion_premio]
-      );
+      try {
+        // Insertar ganador
+        await pool.execute(
+          'INSERT INTO ganadores (sorteo_id, ticket_id, producto_id, posicion_premio) VALUES (?, ?, ?, ?)',
+          [sorteo_id, ticket.id, producto_id, producto.posicion_premio]
+        );
+        console.log(`✅ Ganador ${i + 1} insertado en tabla ganadores`);
 
-      // Marcar ticket como ganador
-      await pool.execute(
-        'UPDATE tickets SET estado = "ganador" WHERE id = ?',
-        [ticket.id]
-      );
+        // Marcar ticket como ganador
+        await pool.execute(
+          'UPDATE tickets SET estado = ? WHERE id = ?',
+          ['ganador', ticket.id]
+        );
+        console.log(`✅ Ticket ${ticket.numero_ticket} marcado como ganador`);
 
-      ganadores.push({
-        id: ticket.id,
-        numero_ticket: ticket.numero_ticket,
-        usuario_nombre: ticket.usuario_nombre,
-        usuario_email: ticket.usuario_email,
-      });
+        ganadores.push({
+          id: ticket.id,
+          numero_ticket: ticket.numero_ticket,
+          usuario_nombre: ticket.usuario_nombre,
+          usuario_email: ticket.usuario_email,
+        });
+      } catch (dbError) {
+        console.error(`❌ Error al guardar ganador ${i + 1}:`, dbError);
+        console.error('❌ Stack:', dbError.stack);
+        throw dbError;
+      }
     }
 
+    console.log('✅ Todos los ganadores guardados correctamente');
+    console.log('🔍 ========== FIN SELECCIÓN DE GANADORES (ÉXITO) ==========');
     res.json({
       message: `${cantidad} ganador(es) seleccionado(s) correctamente`,
       ganadores,
@@ -257,8 +278,13 @@ router.post('/seleccionar-ganadores', authenticateToken, async (req, res) => {
       },
     });
   } catch (error) {
-    console.error('Error al seleccionar ganadores:', error);
-    console.error('Stack:', error.stack);
+    console.error('❌ ========== ERROR EN SELECCIÓN DE GANADORES ==========');
+    console.error('❌ Error completo:', error);
+    console.error('❌ Error message:', error.message);
+    console.error('❌ Error code:', error.code);
+    console.error('❌ Error name:', error.name);
+    console.error('❌ Stack completo:', error.stack);
+    console.error('❌ ========== FIN ERROR ==========');
     res.status(500).json({ 
       error: 'Error al seleccionar ganadores',
       message: error.message,
