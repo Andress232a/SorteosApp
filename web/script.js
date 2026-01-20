@@ -333,6 +333,9 @@ async function loadSorteos(filter = 'todos') {
 
 // Crear tarjeta de sorteo
 function createSorteoCard(sorteo) {
+    console.log('🔍 Creando tarjeta para sorteo:', sorteo.titulo);
+    console.log('🔍 imagen_portada:', sorteo.imagen_portada);
+    
     const fecha = new Date(sorteo.fecha_sorteo);
     const fechaFormateada = fecha.toLocaleDateString('es-ES', { 
         year: 'numeric', 
@@ -349,7 +352,7 @@ function createSorteoCard(sorteo) {
         <div class="sorteo-card" onclick="verDetalleSorteo(${sorteo.id})">
             <div class="sorteo-image">
                 ${sorteo.imagen_portada ? 
-                    `<img src="${sorteo.imagen_portada}" alt="${sorteo.titulo}">` : 
+                    `<img src="${sorteo.imagen_portada}" alt="${sorteo.titulo}" onerror="console.error('Error al cargar imagen_portada:', this.src); this.src='logo.png'; this.className='sorteo-logo';">` : 
                     `<img src="logo.png" alt="PremioClick" class="sorteo-logo">`
                 }
             </div>
