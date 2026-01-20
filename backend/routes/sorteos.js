@@ -79,25 +79,37 @@ router.get('/', async (req, res) => {
           console.log('✅ Query sin imagen_portada ejecutado exitosamente');
           console.log('🔍 Cantidad de sorteos obtenidos:', sorteos?.length || 0);
           
-          // Obtener imagen_portada por separado para cada sorteo
-          console.log('🔍 Obteniendo imagen_portada por separado...');
-          for (let sorteo of sorteos) {
+          // Obtener imagen_portada en una sola query para todos los sorteos
+          console.log('🔍 Obteniendo imagen_portada para todos los sorteos...');
+          if (sorteos && sorteos.length > 0) {
+            const sorteoIds = sorteos.map(s => s.id);
             try {
-              const [portadaResult] = await pool.execute(
-                'SELECT imagen_portada FROM sorteos WHERE id = ?',
-                [sorteo.id]
+              const [portadasResult] = await pool.execute(
+                `SELECT id, imagen_portada FROM sorteos WHERE id IN (${sorteos.map(() => '?').join(',')})`,
+                sorteoIds
               );
-              if (portadaResult && portadaResult.length > 0) {
-                sorteo.imagen_portada = portadaResult[0].imagen_portada;
-              } else {
-                sorteo.imagen_portada = null;
+              
+              // Crear un mapa de id -> imagen_portada
+              const portadasMap = {};
+              portadasResult.forEach(row => {
+                portadasMap[row.id] = row.imagen_portada;
+              });
+              
+              // Asignar imagen_portada a cada sorteo
+              sorteos.forEach(sorteo => {
+                sorteo.imagen_portada = portadasMap[sorteo.id] || null;
+              });
+              
+              console.log('✅ imagen_portada obtenida para todos los sorteos');
+              if (sorteos.length > 0) {
+                console.log('🔍 Primer sorteo después de obtener portadas - imagen_portada:', sorteos[0].imagen_portada ? 'SÍ' : 'NO');
               }
             } catch (portadaError) {
-              console.error(`❌ Error al obtener imagen_portada para sorteo ${sorteo.id}:`, portadaError);
-              sorteo.imagen_portada = null;
+              console.error('❌ Error al obtener imagen_portada:', portadaError);
+              // Si falla, establecer como null
+              sorteos.forEach(s => { s.imagen_portada = null; });
             }
           }
-          console.log('✅ imagen_portada obtenida para todos los sorteos');
         } catch (error2) {
           console.error('❌ Error también con query sin imagen_portada:');
           console.error('❌ Error message:', error2.message);
