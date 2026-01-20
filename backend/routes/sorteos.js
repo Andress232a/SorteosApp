@@ -13,39 +13,32 @@ router.get('/', async (req, res) => {
     let query;
     if (DB_TYPE === 'postgres') {
       // PostgreSQL requiere todas las columnas en GROUP BY
-      // Primero verificar si la columna imagen_portada existe
-      let hasImagenPortada = false;
-      try {
-        const [checkColumn] = await pool.execute(`
-          SELECT column_name 
-          FROM information_schema.columns 
-          WHERE table_name = 'sorteos' AND column_name = 'imagen_portada'
-        `, []);
-        hasImagenPortada = checkColumn && checkColumn.length > 0;
-      } catch (checkError) {
-        console.log('⚠️ Error al verificar columna imagen_portada:', checkError.message);
-        hasImagenPortada = false;
-      }
+      // Intentar query con imagen_portada primero, si falla usar sin ella
+      let sorteos;
+      let queryWithPortada = `
+        SELECT s.id, s.titulo, s.descripcion, s.fecha_sorteo, s.estado, 
+               s.created_by, s.created_at, s.updated_at, s.imagenes, 
+               s.imagen_portada, 
+               s.link,
+               COUNT(DISTINCT t.id) as total_tickets,
+               COUNT(DISTINCT CASE WHEN t.estado = 'vendido' THEN t.id END) as tickets_vendidos,
+               COUNT(DISTINCT p.id) as total_productos
+        FROM sorteos s
+        LEFT JOIN tickets t ON s.id = t.sorteo_id
+        LEFT JOIN productos p ON s.id = p.sorteo_id
+        GROUP BY s.id, s.titulo, s.descripcion, s.fecha_sorteo, s.estado, 
+                 s.created_by, s.created_at, s.updated_at, s.imagenes, s.imagen_portada, s.link
+        ORDER BY s.fecha_sorteo DESC
+      `;
       
-      let query;
-      if (hasImagenPortada) {
-        query = `
-          SELECT s.id, s.titulo, s.descripcion, s.fecha_sorteo, s.estado, 
-                 s.created_by, s.created_at, s.updated_at, s.imagenes, 
-                 s.imagen_portada, 
-                 s.link,
-                 COUNT(DISTINCT t.id) as total_tickets,
-                 COUNT(DISTINCT CASE WHEN t.estado = 'vendido' THEN t.id END) as tickets_vendidos,
-                 COUNT(DISTINCT p.id) as total_productos
-          FROM sorteos s
-          LEFT JOIN tickets t ON s.id = t.sorteo_id
-          LEFT JOIN productos p ON s.id = p.sorteo_id
-          GROUP BY s.id, s.titulo, s.descripcion, s.fecha_sorteo, s.estado, 
-                   s.created_by, s.created_at, s.updated_at, s.imagenes, s.imagen_portada, s.link
-          ORDER BY s.fecha_sorteo DESC
-        `;
-      } else {
-        query = `
+      try {
+        const result = await pool.execute(queryWithPortada, []);
+        sorteos = result[0];
+        console.log('✅ Query ejecutado con imagen_portada');
+      } catch (error) {
+        console.log('⚠️ Error con imagen_portada, usando query sin ella:', error.message);
+        // Si falla, usar query sin imagen_portada
+        const queryWithoutPortada = `
           SELECT s.id, s.titulo, s.descripcion, s.fecha_sorteo, s.estado, 
                  s.created_by, s.created_at, s.updated_at, s.imagenes, s.link,
                  COUNT(DISTINCT t.id) as total_tickets,
@@ -58,12 +51,9 @@ router.get('/', async (req, res) => {
                    s.created_by, s.created_at, s.updated_at, s.imagenes, s.link
           ORDER BY s.fecha_sorteo DESC
         `;
-      }
-      
-      const [sorteos] = await pool.execute(query, []);
-      
-      // Si no tiene imagen_portada, agregarla como null
-      if (!hasImagenPortada) {
+        const result = await pool.execute(queryWithoutPortada, []);
+        sorteos = result[0];
+        // Agregar imagen_portada como null
         sorteos.forEach(s => { s.imagen_portada = null; });
       }
     } else {
