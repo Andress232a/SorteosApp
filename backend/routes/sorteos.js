@@ -222,7 +222,7 @@ router.post('/', authenticateToken, [
       return res.status(400).json({ errors: errors.array() });
     }
 
-    const { titulo, descripcion, fecha_sorteo, productos, imagenes, link } = req.body;
+    const { titulo, descripcion, fecha_sorteo, productos, imagenes, link, imagen_portada } = req.body;
 
     // Validar que las imágenes sean un array y no excedan 5
     let imagenesArray = [];
@@ -240,17 +240,17 @@ router.post('/', authenticateToken, [
     // Crear sorteo
     // En PostgreSQL necesitamos usar RETURNING id, en MySQL usamos insertId
     const { DB_TYPE } = require('../config/database');
-    let insertQuery = 'INSERT INTO sorteos (titulo, descripcion, fecha_sorteo, imagenes, link, created_by) VALUES (?, ?, ?, ?, ?, ?)';
+    let insertQuery = 'INSERT INTO sorteos (titulo, descripcion, fecha_sorteo, imagenes, imagen_portada, link, created_by) VALUES (?, ?, ?, ?, ?, ?, ?)';
     
     if (DB_TYPE === 'postgres') {
       insertQuery += ' RETURNING id';
     }
     
-    console.log('🔍 Creando sorteo con datos:', { titulo, descripcion, fecha_sorteo, link, created_by: req.user.id });
+    console.log('🔍 Creando sorteo con datos:', { titulo, descripcion, fecha_sorteo, link, tieneImagenPortada: !!imagen_portada, created_by: req.user.id });
     
     const [result] = await pool.execute(
       insertQuery,
-      [titulo, descripcion || null, fecha_sorteo, imagenesJson, link || null, req.user.id]
+      [titulo, descripcion || null, fecha_sorteo, imagenesJson, imagen_portada || null, link || null, req.user.id]
     );
 
     console.log('🔍 Resultado de INSERT sorteo (raw):', result);
@@ -409,7 +409,7 @@ router.post('/', authenticateToken, [
 router.put('/:id', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
-    const { titulo, descripcion, fecha_sorteo, estado, productos, imagenes, link } = req.body;
+    const { titulo, descripcion, fecha_sorteo, estado, productos, imagenes, link, imagen_portada } = req.body;
 
     // Verificar que el sorteo existe
     // Si es admin, puede editar cualquier sorteo
@@ -443,8 +443,8 @@ router.put('/:id', authenticateToken, async (req, res) => {
 
     // Actualizar sorteo
     await pool.execute(
-      'UPDATE sorteos SET titulo = ?, descripcion = ?, fecha_sorteo = ?, estado = ?, imagenes = ?, link = ? WHERE id = ?',
-      [titulo, descripcion, fecha_sorteo, estado, imagenesJson, link || null, id]
+      'UPDATE sorteos SET titulo = ?, descripcion = ?, fecha_sorteo = ?, estado = ?, imagenes = ?, imagen_portada = ?, link = ? WHERE id = ?',
+      [titulo, descripcion, fecha_sorteo, estado, imagenesJson, imagen_portada || null, link || null, id]
     );
 
     // Si se envían productos, actualizarlos
