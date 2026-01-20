@@ -12,20 +12,21 @@ router.use(isAdmin);
 router.get('/stats', async (req, res) => {
   try {
     // Total de usuarios
-    const [usuarios] = await pool.execute('SELECT COUNT(*) as total FROM usuarios');
+    const [usuarios] = await pool.execute('SELECT COUNT(*) as total FROM usuarios', []);
     const total_usuarios = usuarios[0].total;
 
     // Total de sorteos
-    const [sorteos] = await pool.execute('SELECT COUNT(*) as total FROM sorteos');
+    const [sorteos] = await pool.execute('SELECT COUNT(*) as total FROM sorteos', []);
     const total_sorteos = sorteos[0].total;
 
     // Total de tickets
-    const [tickets] = await pool.execute('SELECT COUNT(*) as total FROM tickets');
+    const [tickets] = await pool.execute('SELECT COUNT(*) as total FROM tickets', []);
     const total_tickets = tickets[0].total;
 
     // Tickets vendidos
     const [vendidos] = await pool.execute(
-      "SELECT COUNT(*) as total FROM tickets WHERE estado = 'vendido'"
+      "SELECT COUNT(*) as total FROM tickets WHERE estado = 'vendido'",
+      []
     );
     const tickets_vendidos = vendidos[0].total;
 
@@ -34,12 +35,13 @@ router.get('/stats', async (req, res) => {
       SELECT COALESCE(SUM(monto), 0) as total 
       FROM pagos 
       WHERE estado = 'completado'
-    `);
+    `, []);
     const ingresos_totales = ingresos[0].total || 0;
 
     // Sorteos activos
     const [activos] = await pool.execute(
-      "SELECT COUNT(*) as total FROM sorteos WHERE estado = 'activo'"
+      "SELECT COUNT(*) as total FROM sorteos WHERE estado = 'activo'",
+      []
     );
     const sorteos_activos = activos[0].total;
 
@@ -64,7 +66,7 @@ router.get('/usuarios', async (req, res) => {
       SELECT id, nombre, email, telefono, rol, created_at
       FROM usuarios
       ORDER BY created_at DESC
-    `);
+    `, []);
     res.json(usuarios);
   } catch (error) {
     console.error('Error al obtener usuarios:', error);
@@ -93,43 +95,39 @@ router.put('/usuarios/:id/rol', async (req, res) => {
 // Obtener todos los tickets con información del sorteo
 router.get('/tickets', async (req, res) => {
   try {
-    const { DB_TYPE } = require('../config/database');
+    // Usar LEFT JOIN para incluir tickets incluso si el sorteo fue eliminado
+    const query = `
+      SELECT 
+        t.id,
+        t.sorteo_id,
+        t.usuario_id,
+        t.numero_ticket,
+        t.precio,
+        t.estado,
+        t.fecha_compra,
+        t.created_at,
+        COALESCE(s.titulo, 'Sorteo eliminado') as sorteo_titulo
+      FROM tickets t
+      LEFT JOIN sorteos s ON t.sorteo_id = s.id
+      ORDER BY 
+        COALESCE(s.titulo, '') ASC,
+        t.numero_ticket ASC
+    `;
     
-    let query;
-    if (DB_TYPE === 'postgres') {
-      // PostgreSQL: convertir a INTEGER para ordenar numéricamente
-      query = `
-        SELECT 
-          t.*,
-          s.titulo as sorteo_titulo
-        FROM tickets t
-        JOIN sorteos s ON t.sorteo_id = s.id
-        ORDER BY 
-          s.titulo ASC,
-          CAST(t.numero_ticket AS INTEGER),
-          t.numero_ticket ASC
-      `;
-    } else {
-      // MySQL: convertir a UNSIGNED para ordenar numéricamente
-      query = `
-        SELECT 
-          t.*,
-          s.titulo as sorteo_titulo
-        FROM tickets t
-        JOIN sorteos s ON t.sorteo_id = s.id
-        ORDER BY 
-          s.titulo ASC,
-          CAST(t.numero_ticket AS UNSIGNED),
-          t.numero_ticket ASC
-      `;
-    }
-    
-    const [tickets] = await pool.execute(query);
+    console.log('🔍 Ejecutando consulta de tickets...');
+    const [tickets] = await pool.execute(query, []);
+    console.log(`✅ Se obtuvieron ${tickets.length} tickets`);
 
     res.json(tickets);
   } catch (error) {
-    console.error('Error al obtener tickets:', error);
-    res.status(500).json({ error: 'Error al obtener tickets' });
+    console.error('❌ Error al obtener tickets:', error);
+    console.error('📋 Mensaje:', error.message);
+    console.error('📚 Stack:', error.stack);
+    res.status(500).json({ 
+      error: 'Error al obtener tickets',
+      message: error.message,
+      details: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
   }
 });
 

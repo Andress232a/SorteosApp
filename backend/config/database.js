@@ -50,13 +50,14 @@ if (DB_TYPE === 'postgres') {
   queryMethod = async (query, params) => {
     try {
       // Convertir placeholders de MySQL (?) a PostgreSQL ($1, $2, ...)
-      if (typeof query === 'string' && params && params.length > 0) {
+      if (typeof query === 'string' && params && Array.isArray(params) && params.length > 0) {
         let paramIndex = 1;
         const convertedQuery = query.replace(/\?/g, () => `$${paramIndex++}`);
         const result = await pool.query(convertedQuery, params);
         return [result.rows, result.fields];
       } else {
-        const result = await pool.query(query, params);
+        // Sin parámetros, pasar solo la query
+        const result = await pool.query(query);
         return [result.rows, result.fields];
       }
     } catch (error) {
@@ -234,27 +235,36 @@ async function initializeDatabase() {
 // Método execute compatible (para MySQL y PostgreSQL)
 const execute = async (query, params) => {
   if (DB_TYPE === 'postgres') {
-    // Convertir placeholders de MySQL (?) a PostgreSQL ($1, $2, ...)
-    if (typeof query === 'string' && params && params.length > 0) {
-      let paramIndex = 1;
-      const convertedQuery = query.replace(/\?/g, () => `$${paramIndex++}`);
-      const result = await pool.query(convertedQuery, params);
-      // Agregar insertId para compatibilidad con MySQL
-      if (result.rows && result.rows.length > 0 && result.rows[0].id) {
-        result.insertId = result.rows[0].id;
+    try {
+      // Convertir placeholders de MySQL (?) a PostgreSQL ($1, $2, ...)
+      if (typeof query === 'string' && params && Array.isArray(params) && params.length > 0) {
+        let paramIndex = 1;
+        const convertedQuery = query.replace(/\?/g, () => `$${paramIndex++}`);
+        const result = await pool.query(convertedQuery, params);
+        // Agregar insertId para compatibilidad con MySQL
+        if (result.rows && result.rows.length > 0 && result.rows[0].id) {
+          result.insertId = result.rows[0].id;
+        }
+        return [result.rows, result.fields];
+      } else {
+        // Sin parámetros o params es undefined/null
+        // En PostgreSQL, cuando no hay parámetros, podemos pasar solo la query
+        const result = await pool.query(query);
+        // Agregar insertId para compatibilidad con MySQL
+        if (result.rows && result.rows.length > 0 && result.rows[0].id) {
+          result.insertId = result.rows[0].id;
+        }
+        return [result.rows, result.fields];
       }
-      return [result.rows, result.fields];
-    } else {
-      const result = await pool.query(query, params);
-      // Agregar insertId para compatibilidad con MySQL
-      if (result.rows && result.rows.length > 0 && result.rows[0].id) {
-        result.insertId = result.rows[0].id;
-      }
-      return [result.rows, result.fields];
+    } catch (error) {
+      console.error('Error en execute (PostgreSQL):', error);
+      console.error('Query:', query);
+      console.error('Params:', params);
+      throw error;
     }
   } else {
     // MySQL usa execute directamente
-    return await pool.execute(query, params);
+    return await pool.execute(query, params || []);
   }
 };
 

@@ -4,14 +4,48 @@ const { authenticateToken, isAdmin } = require('../middleware/auth');
 
 const router = express.Router();
 
-// Generar número de ticket con formato: Año + Mes + Número secuencial (0000-1000)
-function generateTicketNumber(numero) {
+// Extraer iniciales del título del sorteo (máximo 5 caracteres)
+function getSorteoIniciales(titulo) {
+  if (!titulo || typeof titulo !== 'string') {
+    return 'TKT';
+  }
+  
+  // Extraer las iniciales de cada palabra (mayúsculas)
+  const palabras = titulo.trim().split(/\s+/);
+  let iniciales = '';
+  
+  for (const palabra of palabras) {
+    if (palabra.length > 0) {
+      const primeraLetra = palabra[0].toUpperCase();
+      // Solo tomar letras (no números ni caracteres especiales)
+      if (/[A-Z]/.test(primeraLetra)) {
+        iniciales += primeraLetra;
+        // Limitar a 5 caracteres máximo
+        if (iniciales.length >= 5) break;
+      }
+    }
+  }
+  
+  // Si no hay iniciales válidas, usar las primeras 3 letras del título
+  if (iniciales.length === 0) {
+    iniciales = titulo.substring(0, 3).toUpperCase().replace(/[^A-Z]/g, '');
+    if (iniciales.length === 0) {
+      iniciales = 'TKT';
+    }
+  }
+  
+  return iniciales;
+}
+
+// Generar número de ticket con formato: INICIALES-AÑO-MES-NÚMERO
+// Ejemplo: "UGS-202501-0001" para "Ultimo Gran Sorteo"
+function generateTicketNumber(iniciales, numero) {
   const ahora = new Date();
   const año = ahora.getFullYear(); // 2025
   const mes = (ahora.getMonth() + 1).toString().padStart(2, '0'); // 01-12
-  // Formatear el número con ceros a la izquierda (0000, 0001, 0002, etc., hasta 1000)
+  // Formatear el número con ceros a la izquierda (0001, 0002, etc.)
   const numeroFormateado = numero.toString().padStart(4, '0');
-  return `${año}${mes}${numeroFormateado}`;
+  return `${iniciales}-${año}${mes}-${numeroFormateado}`;
 }
 
 // Crear tickets para un sorteo (solo admin/creador)
@@ -39,13 +73,16 @@ router.post('/generar/:sorteoId', authenticateToken, async (req, res) => {
 
     const sorteo = sorteos[0];
 
-    // Obtener el número de tickets existentes para este sorteo en el mes actual
+    // Obtener las iniciales del sorteo
+    const iniciales = getSorteoIniciales(sorteo.titulo);
+    
+    // Obtener el número de tickets existentes para este sorteo con las mismas iniciales
     const ahora = new Date();
     const año = ahora.getFullYear();
     const mes = ahora.getMonth() + 1;
     
-    // Contar tickets del mes actual que empiezan con el año y mes
-    const prefijo = `${año}${mes.toString().padStart(2, '0')}`;
+    // Buscar tickets que empiecen con las iniciales del sorteo
+    const prefijo = `${iniciales}-${año}${mes.toString().padStart(2, '0')}-`;
     const [ticketsExistentes] = await pool.execute(
       'SELECT COUNT(*) as total FROM tickets WHERE sorteo_id = ? AND numero_ticket LIKE ?',
       [sorteoId, `${prefijo}%`]
@@ -62,7 +99,7 @@ router.post('/generar/:sorteoId', authenticateToken, async (req, res) => {
 
     const tickets = [];
     for (let i = 0; i < cantidad; i++) {
-      const numeroTicket = generateTicketNumber(numeroInicial + i);
+      const numeroTicket = generateTicketNumber(iniciales, numeroInicial + i + 1);
       tickets.push([sorteoId, numeroTicket, precio]);
     }
 
@@ -119,13 +156,8 @@ router.get('/sorteo/:sorteoId', async (req, res) => {
       params.push(estado);
     }
 
-    // Ordenar por número de ticket (ordenar numéricamente)
-    const { DB_TYPE } = require('../config/database');
-    if (DB_TYPE === 'postgres') {
-      query += ` ORDER BY CAST(numero_ticket AS INTEGER) ASC, numero_ticket ASC`;
-    } else {
-      query += ` ORDER BY CAST(numero_ticket AS UNSIGNED) ASC, numero_ticket ASC`;
-    }
+    // Ordenar por número de ticket (ordenar alfabéticamente ya que ahora incluye iniciales)
+    query += ` ORDER BY numero_ticket ASC`;
 
     const [tickets] = await pool.execute(query, params);
 
