@@ -257,6 +257,28 @@
             color: var(--text-light);
             font-size: 0.9rem;
         }
+        .producto-imagenes {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+        .producto-imagenes img {
+            width: 100%;
+            max-width: 200px;
+            height: 150px;
+            object-fit: cover;
+            border-radius: 10px;
+            box-shadow: var(--shadow);
+            cursor: pointer;
+            transition: transform 0.3s ease;
+        }
+        .producto-imagenes img:hover {
+            transform: scale(1.05);
+        }
+        .producto-imagenes img:only-child {
+            max-width: 100%;
+        }
         .loading-detalle {
             text-align: center;
             padding: 4rem;

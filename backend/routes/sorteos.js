@@ -190,6 +190,20 @@ router.get('/', async (req, res) => {
 
     console.log('✅ Todos los sorteos procesados correctamente');
     console.log('🔍 Total de sorteos a retornar:', sorteos?.length || 0);
+    
+    // Verificar imagen_portada antes de retornar
+    if (sorteos && sorteos.length > 0) {
+      console.log('🔍 Verificando imagen_portada en sorteos...');
+      sorteos.forEach((s, index) => {
+        console.log(`🔍 Sorteo ${index + 1} (${s.titulo}):`);
+        console.log(`  - imagen_portada: ${s.imagen_portada ? 'SÍ (' + (s.imagen_portada.length > 50 ? s.imagen_portada.substring(0, 50) + '...' : s.imagen_portada) + ')' : 'NO'}`);
+        console.log(`  - productos: ${s.productos?.length || 0}`);
+        if (s.productos && s.productos.length > 0) {
+          console.log(`  - Primer producto imagenes: ${s.productos[0].imagenes?.length || 0} imágenes`);
+        }
+      });
+    }
+    
     console.log('🔍 ========== FIN GET /sorteos (ÉXITO) ==========');
     res.json(sorteos);
   } catch (error) {

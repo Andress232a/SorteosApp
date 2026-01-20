@@ -64,6 +64,14 @@ async function loadSorteo() {
         
         sorteo = await response.json();
         
+        console.log('🔍 Sorteo recibido del backend:', sorteo);
+        console.log('🔍 Sorteo - imagen_portada:', sorteo.imagen_portada);
+        console.log('🔍 Sorteo - productos:', sorteo.productos);
+        if (sorteo.productos && sorteo.productos.length > 0) {
+            console.log('🔍 Primer producto:', sorteo.productos[0]);
+            console.log('🔍 Primer producto - imagenes:', sorteo.productos[0].imagenes);
+        }
+        
         // Parsear imágenes
         if (sorteo.imagenes) {
             try {
@@ -176,13 +184,52 @@ function mostrarProductos() {
     const productosSection = document.getElementById('productosSection');
     const productosGrid = document.getElementById('productosGrid');
     
-    productosGrid.innerHTML = sorteo.productos.map(producto => `
+    console.log('🔍 Mostrando productos. Cantidad:', sorteo.productos.length);
+    
+    productosGrid.innerHTML = sorteo.productos.map((producto, index) => {
+        console.log(`🔍 Producto ${index + 1}:`, producto);
+        console.log(`🔍 Producto ${index + 1} - imagenes:`, producto.imagenes);
+        console.log(`🔍 Producto ${index + 1} - tipo de imagenes:`, typeof producto.imagenes);
+        console.log(`🔍 Producto ${index + 1} - es array?:`, Array.isArray(producto.imagenes));
+        
+        // Asegurar que imagenes sea un array
+        let imagenesArray = [];
+        if (producto.imagenes) {
+            if (Array.isArray(producto.imagenes)) {
+                imagenesArray = producto.imagenes;
+            } else if (typeof producto.imagenes === 'string') {
+                try {
+                    imagenesArray = JSON.parse(producto.imagenes);
+                    if (!Array.isArray(imagenesArray)) {
+                        imagenesArray = [];
+                    }
+                } catch (e) {
+                    console.error('Error al parsear imágenes del producto:', e);
+                    imagenesArray = [];
+                }
+            }
+        }
+        
+        console.log(`🔍 Producto ${index + 1} - imagenesArray final:`, imagenesArray);
+        
+        const imagenesHTML = imagenesArray.length > 0 
+            ? `<div class="producto-imagenes">
+                ${imagenesArray.map((img, imgIndex) => `
+                    <img src="${img}" alt="${producto.nombre} - Imagen ${imgIndex + 1}" 
+                         onerror="console.error('Error al cargar imagen del producto:', this.src); this.style.display='none';">
+                `).join('')}
+               </div>`
+            : '';
+        
+        return `
         <div class="producto-card">
             <span class="producto-posicion">${producto.posicion_premio}° Lugar</span>
+            ${imagenesHTML}
             <h3 class="producto-nombre">${producto.nombre}</h3>
             ${producto.descripcion ? `<p class="producto-descripcion">${producto.descripcion}</p>` : ''}
         </div>
-    `).join('');
+    `;
+    }).join('');
     
     productosSection.style.display = 'block';
 }
