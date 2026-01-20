@@ -13,9 +13,12 @@ router.get('/', async (req, res) => {
     let query;
     if (DB_TYPE === 'postgres') {
       // PostgreSQL requiere todas las columnas en GROUP BY
+      // Intentar incluir imagen_portada, pero si no existe, usar NULL
       query = `
         SELECT s.id, s.titulo, s.descripcion, s.fecha_sorteo, s.estado, 
-               s.created_by, s.created_at, s.updated_at, s.imagenes, s.imagen_portada, s.link,
+               s.created_by, s.created_at, s.updated_at, s.imagenes, 
+               COALESCE(s.imagen_portada, NULL) as imagen_portada, 
+               s.link,
                COUNT(DISTINCT t.id) as total_tickets,
                COUNT(DISTINCT CASE WHEN t.estado = 'vendido' THEN t.id END) as tickets_vendidos,
                COUNT(DISTINCT p.id) as total_productos
@@ -23,9 +26,37 @@ router.get('/', async (req, res) => {
         LEFT JOIN tickets t ON s.id = t.sorteo_id
         LEFT JOIN productos p ON s.id = p.sorteo_id
         GROUP BY s.id, s.titulo, s.descripcion, s.fecha_sorteo, s.estado, 
-                 s.created_by, s.created_at, s.updated_at, s.imagenes, s.imagen_portada, s.link
+                 s.created_by, s.created_at, s.updated_at, s.imagenes, s.link
         ORDER BY s.fecha_sorteo DESC
       `;
+      
+      // Intentar ejecutar el query con imagen_portada
+      try {
+        var [sorteos] = await pool.execute(query, []);
+      } catch (error) {
+        // Si falla porque la columna no existe, usar query sin imagen_portada
+        if (error.message && error.message.includes('imagen_portada')) {
+          console.log('⚠️ Columna imagen_portada no existe, usando query sin ella');
+          query = `
+            SELECT s.id, s.titulo, s.descripcion, s.fecha_sorteo, s.estado, 
+                   s.created_by, s.created_at, s.updated_at, s.imagenes, s.link,
+                   COUNT(DISTINCT t.id) as total_tickets,
+                   COUNT(DISTINCT CASE WHEN t.estado = 'vendido' THEN t.id END) as tickets_vendidos,
+                   COUNT(DISTINCT p.id) as total_productos
+            FROM sorteos s
+            LEFT JOIN tickets t ON s.id = t.sorteo_id
+            LEFT JOIN productos p ON s.id = p.sorteo_id
+            GROUP BY s.id, s.titulo, s.descripcion, s.fecha_sorteo, s.estado, 
+                     s.created_by, s.created_at, s.updated_at, s.imagenes, s.link
+            ORDER BY s.fecha_sorteo DESC
+          `;
+          [sorteos] = await pool.execute(query, []);
+          // Agregar imagen_portada como null a cada sorteo
+          sorteos = sorteos.map(s => ({ ...s, imagen_portada: null }));
+        } else {
+          throw error;
+        }
+      }
     } else {
       // MySQL permite GROUP BY solo con id
       query = `
@@ -39,9 +70,8 @@ router.get('/', async (req, res) => {
         GROUP BY s.id
         ORDER BY s.fecha_sorteo DESC
       `;
+      var [sorteos] = await pool.execute(query, []);
     }
-    
-    const [sorteos] = await pool.execute(query, []);
 
     // Obtener productos para cada sorteo
     for (let sorteo of sorteos) {
