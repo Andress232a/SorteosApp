@@ -253,16 +253,30 @@ router.post('/', authenticateToken, [
       [titulo, descripcion || null, fecha_sorteo, imagenesJson, link || null, req.user.id]
     );
 
-    console.log('🔍 Resultado de INSERT sorteo:', result);
+    console.log('🔍 Resultado de INSERT sorteo (raw):', result);
+    console.log('🔍 Tipo de result:', Array.isArray(result) ? 'array' : typeof result);
     console.log('🔍 DB_TYPE:', DB_TYPE);
 
     // Obtener el ID del sorteo creado
-    // En PostgreSQL, el resultado está en result[0].id después de RETURNING
+    // El método execute retorna [rows, fields]
+    // En PostgreSQL con RETURNING, rows[0] contiene el objeto con el id
     // En MySQL, está en result.insertId
     let sorteoId;
     if (DB_TYPE === 'postgres') {
-      sorteoId = result[0]?.id || result.insertId;
-      console.log('🔍 PostgreSQL - sorteoId obtenido:', sorteoId, 'de result[0]:', result[0]);
+      // result es el array [rows, fields] del método execute
+      // result[0] son las rows, result[0][0] es el primer registro
+      const rows = result[0] || [];
+      const firstRow = rows[0] || {};
+      sorteoId = firstRow.id;
+      console.log('🔍 PostgreSQL - rows:', rows);
+      console.log('🔍 PostgreSQL - firstRow:', firstRow);
+      console.log('🔍 PostgreSQL - sorteoId obtenido:', sorteoId);
+      
+      // Si no se encontró en firstRow, intentar con insertId (por si el método execute lo agregó)
+      if (!sorteoId && result.insertId) {
+        sorteoId = result.insertId;
+        console.log('🔍 PostgreSQL - usando insertId como fallback:', sorteoId);
+      }
     } else {
       sorteoId = result.insertId;
       console.log('🔍 MySQL - sorteoId obtenido:', sorteoId);
