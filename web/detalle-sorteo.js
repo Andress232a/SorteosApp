@@ -125,13 +125,22 @@ function mostrarSorteo() {
     document.getElementById('sorteoContainer').style.display = 'block';
     
     // Imagen de portada
+    console.log('🔍 ========== MOSTRANDO PORTADA ==========');
     const portadaContainer = document.getElementById('sorteoPortada');
+    console.log('🔍 portadaContainer encontrado?:', !!portadaContainer);
+    console.log('🔍 sorteo.imagen_portada:', sorteo.imagen_portada);
+    console.log('🔍 tiene imagen_portada?:', !!sorteo.imagen_portada);
+    
     if (sorteo.imagen_portada) {
-        portadaContainer.innerHTML = `<img src="${sorteo.imagen_portada}" alt="Portada ${sorteo.titulo}" class="sorteo-portada-image">`;
+        console.log('🔍 Creando imagen de portada...');
+        portadaContainer.innerHTML = `<img src="${sorteo.imagen_portada}" alt="Portada ${sorteo.titulo}" class="sorteo-portada-image" onerror="console.error('❌ Error al cargar imagen_portada:', this.src); this.style.display='none';">`;
         portadaContainer.style.display = 'block';
+        console.log('✅ Imagen de portada creada y mostrada');
     } else {
+        console.log('⚠️ No hay imagen_portada, ocultando contenedor');
         portadaContainer.style.display = 'none';
     }
+    console.log('🔍 ========== FIN MOSTRANDO PORTADA ==========');
     
     // Título y badge
     document.getElementById('sorteoTitulo').textContent = sorteo.titulo;
