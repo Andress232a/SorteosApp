@@ -333,8 +333,6 @@ async function loadSorteos(filter = 'todos') {
 
 // Crear tarjeta de sorteo
 function createSorteoCard(sorteo) {
-    const imagenes = sorteo.imagenes ? (typeof sorteo.imagenes === 'string' ? JSON.parse(sorteo.imagenes) : sorteo.imagenes) : [];
-    const primeraImagen = imagenes.length > 0 ? imagenes[0] : null;
     const fecha = new Date(sorteo.fecha_sorteo);
     const fechaFormateada = fecha.toLocaleDateString('es-ES', { 
         year: 'numeric', 
@@ -350,8 +348,8 @@ function createSorteoCard(sorteo) {
     return `
         <div class="sorteo-card" onclick="verDetalleSorteo(${sorteo.id})">
             <div class="sorteo-image">
-                ${primeraImagen ? 
-                    `<img src="${primeraImagen}" alt="${sorteo.titulo}">` : 
+                ${sorteo.imagen_portada ? 
+                    `<img src="${sorteo.imagen_portada}" alt="${sorteo.titulo}">` : 
                     `<img src="logo.png" alt="PremioClick" class="sorteo-logo">`
                 }
             </div>

@@ -52,6 +52,13 @@
             color: var(--text-dark);
             flex: 1;
         }
+        .sorteo-portada-image {
+            width: 100%;
+            max-height: 400px;
+            object-fit: cover;
+            border-radius: 15px;
+            box-shadow: var(--shadow);
+        }
         .sorteo-badge-detalle {
             padding: 8px 16px;
             border-radius: 20px;
@@ -392,6 +399,9 @@
 
         <div id="sorteoContainer" style="display: none;">
             <div class="sorteo-detalle-card">
+                <div id="sorteoPortada" style="display: none; margin-bottom: 2rem;">
+                    <!-- La imagen de portada se insertará aquí -->
+                </div>
                 <div class="sorteo-header-detalle">
                     <h1 class="sorteo-titulo-detalle" id="sorteoTitulo"></h1>
                     <span class="sorteo-badge-detalle" id="sorteoBadge"></span>

@@ -97,6 +97,15 @@ function mostrarSorteo() {
     document.getElementById('loadingContainer').style.display = 'none';
     document.getElementById('sorteoContainer').style.display = 'block';
     
+    // Imagen de portada
+    const portadaContainer = document.getElementById('sorteoPortada');
+    if (sorteo.imagen_portada) {
+        portadaContainer.innerHTML = `<img src="${sorteo.imagen_portada}" alt="Portada ${sorteo.titulo}" class="sorteo-portada-image">`;
+        portadaContainer.style.display = 'block';
+    } else {
+        portadaContainer.style.display = 'none';
+    }
+    
     // Título y badge
     document.getElementById('sorteoTitulo').textContent = sorteo.titulo;
     const badge = document.getElementById('sorteoBadge');
