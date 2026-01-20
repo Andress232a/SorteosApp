@@ -217,7 +217,7 @@ router.get('/:id', async (req, res) => {
       [id]
     );
     // Mapear precio_total a precio para compatibilidad con el frontend
-    sorteo.promociones = promociones.map((promo: any) => ({
+    sorteo.promociones = promociones.map((promo) => ({
       ...promo,
       precio: promo.precio_total || promo.precio, // Usar precio_total si existe, sino precio
     }));
