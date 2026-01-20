@@ -25,6 +25,12 @@ const authenticateToken = async (req, res, next) => {
     req.user = users[0];
     next();
   } catch (error) {
+    console.error('Error en authenticateToken:', error);
+    if (error.name === 'TokenExpiredError') {
+      return res.status(403).json({ error: 'Token expirado. Por favor, inicia sesión nuevamente' });
+    } else if (error.name === 'JsonWebTokenError') {
+      return res.status(403).json({ error: 'Token inválido' });
+    }
     return res.status(403).json({ error: 'Token inválido o expirado' });
   }
 };

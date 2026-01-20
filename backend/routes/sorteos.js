@@ -8,17 +8,40 @@ const router = express.Router();
 // Obtener todos los sorteos
 router.get('/', async (req, res) => {
   try {
-    const [sorteos] = await pool.execute(`
-      SELECT s.*, 
-             COUNT(DISTINCT t.id) as total_tickets,
-             COUNT(DISTINCT CASE WHEN t.estado = 'vendido' THEN t.id END) as tickets_vendidos,
-             COUNT(DISTINCT p.id) as total_productos
-      FROM sorteos s
-      LEFT JOIN tickets t ON s.id = t.sorteo_id
-      LEFT JOIN productos p ON s.id = p.sorteo_id
-      GROUP BY s.id
-      ORDER BY s.fecha_sorteo DESC
-    `);
+    const { DB_TYPE } = require('../config/database');
+    
+    let query;
+    if (DB_TYPE === 'postgres') {
+      // PostgreSQL requiere todas las columnas en GROUP BY
+      query = `
+        SELECT s.id, s.titulo, s.descripcion, s.fecha_sorteo, s.estado, 
+               s.created_by, s.created_at, s.updated_at, s.imagenes, s.link,
+               COUNT(DISTINCT t.id) as total_tickets,
+               COUNT(DISTINCT CASE WHEN t.estado = 'vendido' THEN t.id END) as tickets_vendidos,
+               COUNT(DISTINCT p.id) as total_productos
+        FROM sorteos s
+        LEFT JOIN tickets t ON s.id = t.sorteo_id
+        LEFT JOIN productos p ON s.id = p.sorteo_id
+        GROUP BY s.id, s.titulo, s.descripcion, s.fecha_sorteo, s.estado, 
+                 s.created_by, s.created_at, s.updated_at, s.imagenes, s.link
+        ORDER BY s.fecha_sorteo DESC
+      `;
+    } else {
+      // MySQL permite GROUP BY solo con id
+      query = `
+        SELECT s.*, 
+               COUNT(DISTINCT t.id) as total_tickets,
+               COUNT(DISTINCT CASE WHEN t.estado = 'vendido' THEN t.id END) as tickets_vendidos,
+               COUNT(DISTINCT p.id) as total_productos
+        FROM sorteos s
+        LEFT JOIN tickets t ON s.id = t.sorteo_id
+        LEFT JOIN productos p ON s.id = p.sorteo_id
+        GROUP BY s.id
+        ORDER BY s.fecha_sorteo DESC
+      `;
+    }
+    
+    const [sorteos] = await pool.execute(query, []);
 
     // Obtener productos para cada sorteo
     for (let sorteo of sorteos) {
@@ -51,7 +74,12 @@ router.get('/', async (req, res) => {
     res.json(sorteos);
   } catch (error) {
     console.error('Error al obtener sorteos:', error);
-    res.status(500).json({ error: 'Error al obtener sorteos' });
+    console.error('Stack:', error.stack);
+    res.status(500).json({ 
+      error: 'Error al obtener sorteos',
+      message: error.message,
+      details: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
   }
 });
 
