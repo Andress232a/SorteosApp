@@ -180,24 +180,25 @@ router.post('/seleccionar-ganadores', authenticateToken, async (req, res) => {
 
     const producto = productos[0];
 
-    // Obtener TODOS los tickets del sorteo que no sean ganadores (sin importar si están vendidos o no)
+    // Obtener SOLO los tickets VENDIDOS del sorteo que no sean ganadores
     const [ticketsVendidos] = await pool.execute(`
       SELECT t.*, u.nombre as usuario_nombre, u.email as usuario_email
       FROM tickets t
       LEFT JOIN usuarios u ON t.usuario_id = u.id
       WHERE t.sorteo_id = ? 
+        AND t.estado = 'vendido'
         AND t.id NOT IN (
           SELECT ticket_id FROM ganadores WHERE sorteo_id = ?
         )
     `, [sorteo_id, sorteo_id]);
 
     if (ticketsVendidos.length === 0) {
-      return res.status(400).json({ error: 'No hay tickets disponibles para este sorteo' });
+      return res.status(400).json({ error: 'No hay tickets vendidos disponibles para este sorteo' });
     }
 
     if (ticketsVendidos.length < cantidad) {
       return res.status(400).json({ 
-        error: `Solo hay ${ticketsVendidos.length} tickets disponibles, pero se solicitaron ${cantidad}` 
+        error: `Solo hay ${ticketsVendidos.length} tickets vendidos disponibles, pero se solicitaron ${cantidad}` 
       });
     }
 
@@ -257,7 +258,12 @@ router.post('/seleccionar-ganadores', authenticateToken, async (req, res) => {
     });
   } catch (error) {
     console.error('Error al seleccionar ganadores:', error);
-    res.status(500).json({ error: 'Error al seleccionar ganadores' });
+    console.error('Stack:', error.stack);
+    res.status(500).json({ 
+      error: 'Error al seleccionar ganadores',
+      message: error.message,
+      details: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
   }
 });
 
@@ -272,7 +278,7 @@ router.get('/ganadores/:sorteoId', async (req, res) => {
         t.numero_ticket,
         p.nombre as producto_nombre,
         p.descripcion as producto_descripcion,
-        p.imagen_url as producto_imagen,
+        p.imagenes as producto_imagenes,
         u.nombre as ganador_nombre,
         u.email as ganador_email,
         u.telefono as ganador_telefono
