@@ -263,26 +263,31 @@ router.post('/', authenticateToken, [
     // En MySQL, está en result.insertId
     let sorteoId;
     if (DB_TYPE === 'postgres') {
-      // result es el array [rows, fields] del método execute
-      // result[0] son las rows, result[0][0] es el primer registro
-      const rows = result[0] || [];
-      const firstRow = rows[0] || {};
-      sorteoId = firstRow.id || rows.insertId;
-      console.log('🔍 PostgreSQL - rows:', rows);
+      // result ya es el array de rows (porque hicimos const [result] = await pool.execute(...))
+      // result[0] es el primer registro que contiene el id
+      const firstRow = result[0] || {};
+      sorteoId = firstRow.id || result.insertId;
+      console.log('🔍 PostgreSQL - result:', result);
       console.log('🔍 PostgreSQL - firstRow:', firstRow);
-      console.log('🔍 PostgreSQL - rows.insertId:', rows.insertId);
+      console.log('🔍 PostgreSQL - result.insertId:', result.insertId);
       console.log('🔍 PostgreSQL - sorteoId obtenido:', sorteoId);
       
       // Si aún no tenemos el ID, intentar obtenerlo consultando el último sorteo creado
       if (!sorteoId) {
         console.warn('⚠️ No se pudo obtener ID de RETURNING, consultando último sorteo...');
-        const [ultimosSorteos] = await pool.execute(
-          'SELECT id FROM sorteos WHERE created_by = ? ORDER BY id DESC LIMIT 1',
-          [req.user.id]
-        );
-        if (ultimosSorteos && ultimosSorteos.length > 0) {
-          sorteoId = ultimosSorteos[0].id;
-          console.log('✅ SorteoId obtenido de consulta:', sorteoId);
+        try {
+          const [ultimosSorteos] = await pool.execute(
+            'SELECT id FROM sorteos WHERE created_by = ? ORDER BY id DESC LIMIT 1',
+            [req.user.id]
+          );
+          if (ultimosSorteos && ultimosSorteos.length > 0) {
+            sorteoId = ultimosSorteos[0].id;
+            console.log('✅ SorteoId obtenido de consulta:', sorteoId);
+          } else {
+            console.error('❌ No se encontró ningún sorteo recién creado');
+          }
+        } catch (fallbackError) {
+          console.error('❌ Error en fallback para obtener sorteoId:', fallbackError);
         }
       }
     } else {
