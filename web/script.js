@@ -299,6 +299,13 @@ async function loadSorteos(filter = 'todos') {
     try {
         const response = await fetch(`${API_URL}/sorteos`);
         const sorteos = await response.json();
+        
+        console.log('🔍 Sorteos recibidos del backend:', sorteos.length);
+        if (sorteos.length > 0) {
+            console.log('🔍 Primer sorteo completo:', sorteos[0]);
+            console.log('🔍 Primer sorteo - imagen_portada:', sorteos[0].imagen_portada);
+            console.log('🔍 Primer sorteo - tiene imagen_portada?', !!sorteos[0].imagen_portada);
+        }
 
         let filteredSorteos = sorteos;
         if (filter === 'activo') {
