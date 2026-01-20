@@ -289,6 +289,11 @@ function initSocket() {
     socket.on('disconnect', () => {
         console.log('Desconectado del servidor');
     });
+
+    socket.on('connect_error', (error) => {
+        console.error('❌ Error al conectar al servidor de chat:', error);
+        console.error('❌ Error message:', error.message);
+    });
 }
 
 // Cargar sorteos
