@@ -245,7 +245,12 @@ const execute = async (query, params) => {
         if (result.rows && result.rows.length > 0 && result.rows[0].id) {
           result.insertId = result.rows[0].id;
         }
-        return [result.rows, result.fields];
+        // Retornar [rows, fields] pero también agregar insertId a rows para fácil acceso
+        const rows = result.rows || [];
+        if (rows.length > 0 && rows[0].id) {
+          rows.insertId = rows[0].id;
+        }
+        return [rows, result.fields];
       } else {
         // Sin parámetros o params es undefined/null
         // En PostgreSQL, cuando no hay parámetros, podemos pasar solo la query
@@ -254,7 +259,12 @@ const execute = async (query, params) => {
         if (result.rows && result.rows.length > 0 && result.rows[0].id) {
           result.insertId = result.rows[0].id;
         }
-        return [result.rows, result.fields];
+        // Retornar [rows, fields] pero también agregar insertId a rows para fácil acceso
+        const rows = result.rows || [];
+        if (rows.length > 0 && rows[0].id) {
+          rows.insertId = rows[0].id;
+        }
+        return [rows, result.fields];
       }
     } catch (error) {
       console.error('Error en execute (PostgreSQL):', error);

@@ -267,15 +267,23 @@ router.post('/', authenticateToken, [
       // result[0] son las rows, result[0][0] es el primer registro
       const rows = result[0] || [];
       const firstRow = rows[0] || {};
-      sorteoId = firstRow.id;
+      sorteoId = firstRow.id || rows.insertId;
       console.log('🔍 PostgreSQL - rows:', rows);
       console.log('🔍 PostgreSQL - firstRow:', firstRow);
+      console.log('🔍 PostgreSQL - rows.insertId:', rows.insertId);
       console.log('🔍 PostgreSQL - sorteoId obtenido:', sorteoId);
       
-      // Si no se encontró en firstRow, intentar con insertId (por si el método execute lo agregó)
-      if (!sorteoId && result.insertId) {
-        sorteoId = result.insertId;
-        console.log('🔍 PostgreSQL - usando insertId como fallback:', sorteoId);
+      // Si aún no tenemos el ID, intentar obtenerlo consultando el último sorteo creado
+      if (!sorteoId) {
+        console.warn('⚠️ No se pudo obtener ID de RETURNING, consultando último sorteo...');
+        const [ultimosSorteos] = await pool.execute(
+          'SELECT id FROM sorteos WHERE created_by = ? ORDER BY id DESC LIMIT 1',
+          [req.user.id]
+        );
+        if (ultimosSorteos && ultimosSorteos.length > 0) {
+          sorteoId = ultimosSorteos[0].id;
+          console.log('✅ SorteoId obtenido de consulta:', sorteoId);
+        }
       }
     } else {
       sorteoId = result.insertId;
