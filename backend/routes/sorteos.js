@@ -246,10 +246,15 @@ router.post('/', authenticateToken, [
       insertQuery += ' RETURNING id';
     }
     
+    console.log('🔍 Creando sorteo con datos:', { titulo, descripcion, fecha_sorteo, link, created_by: req.user.id });
+    
     const [result] = await pool.execute(
       insertQuery,
       [titulo, descripcion || null, fecha_sorteo, imagenesJson, link || null, req.user.id]
     );
+
+    console.log('🔍 Resultado de INSERT sorteo:', result);
+    console.log('🔍 DB_TYPE:', DB_TYPE);
 
     // Obtener el ID del sorteo creado
     // En PostgreSQL, el resultado está en result[0].id después de RETURNING
@@ -257,27 +262,39 @@ router.post('/', authenticateToken, [
     let sorteoId;
     if (DB_TYPE === 'postgres') {
       sorteoId = result[0]?.id || result.insertId;
+      console.log('🔍 PostgreSQL - sorteoId obtenido:', sorteoId, 'de result[0]:', result[0]);
     } else {
       sorteoId = result.insertId;
+      console.log('🔍 MySQL - sorteoId obtenido:', sorteoId);
     }
     
     if (!sorteoId) {
+      console.error('❌ No se pudo obtener el ID del sorteo. Result completo:', JSON.stringify(result, null, 2));
       throw new Error('No se pudo obtener el ID del sorteo creado');
     }
+    
+    console.log('✅ Sorteo creado con ID:', sorteoId);
 
     // Crear productos
+    console.log('🔍 Creando productos. Cantidad:', productos?.length);
     if (productos && productos.length > 0) {
-      for (let producto of productos) {
+      for (let i = 0; i < productos.length; i++) {
+        const producto = productos[i];
         try {
+          console.log(`🔍 Procesando producto ${i + 1}/${productos.length}:`, producto.nombre);
+          
           // Convertir array de imágenes a JSON si existe
           let imagenesJson = null;
           if (producto.imagenes && Array.isArray(producto.imagenes) && producto.imagenes.length > 0) {
             imagenesJson = JSON.stringify(producto.imagenes);
+            console.log(`🔍 Producto tiene ${producto.imagenes.length} imágenes`);
+          } else {
+            console.log('🔍 Producto sin imágenes');
           }
           
           // Intentar insertar con la columna 'imagenes' (nueva estructura)
-          // Si falla porque la columna no existe, usar 'imagen_url' (estructura antigua)
           try {
+            console.log('🔍 Intentando INSERT con columna "imagenes"');
             await pool.execute(
               'INSERT INTO productos (sorteo_id, nombre, descripcion, imagenes, posicion_premio) VALUES (?, ?, ?, ?, ?)',
               [
@@ -288,10 +305,12 @@ router.post('/', authenticateToken, [
                 producto.posicion_premio || 1
               ]
             );
+            console.log(`✅ Producto "${producto.nombre}" creado exitosamente`);
           } catch (insertError) {
+            console.error('❌ Error al insertar con columna "imagenes":', insertError.message);
             // Si falla porque la columna 'imagenes' no existe, usar 'imagen_url'
-            if (insertError.message && (insertError.message.includes('imagenes') || insertError.message.includes('column'))) {
-              console.warn('⚠️ Columna "imagenes" no existe, usando "imagen_url" (estructura antigua). Ejecuta el script SQL para actualizar.');
+            if (insertError.message && (insertError.message.includes('imagenes') || insertError.message.includes('column') || insertError.code === '42703')) {
+              console.warn('⚠️ Columna "imagenes" no existe, usando "imagen_url" (estructura antigua)');
               // Si hay imágenes, usar la primera como imagen_url
               let imagenUrl = null;
               if (producto.imagenes && Array.isArray(producto.imagenes) && producto.imagenes.length > 0) {
@@ -307,16 +326,19 @@ router.post('/', authenticateToken, [
                   producto.posicion_premio || 1
                 ]
               );
+              console.log(`✅ Producto "${producto.nombre}" creado con imagen_url`);
             } else {
               throw insertError;
             }
           }
         } catch (productoError) {
-          console.error('Error al crear producto:', productoError);
-          console.error('Producto que falló:', producto);
+          console.error('❌ Error al crear producto:', productoError);
+          console.error('❌ Stack:', productoError.stack);
+          console.error('❌ Producto que falló:', JSON.stringify(producto, null, 2));
           throw new Error(`Error al crear producto "${producto.nombre}": ${productoError.message}`);
         }
       }
+      console.log('✅ Todos los productos creados exitosamente');
     }
 
     // Obtener el sorteo creado
