@@ -331,6 +331,14 @@ router.get('/:id', async (req, res) => {
       WHERE sorteo_id = ?
     `, [id]);
     sorteo.estadisticas = stats[0];
+    
+    console.log('🔍 Sorteo final antes de retornar:');
+    console.log('  - imagen_portada:', sorteo.imagen_portada ? 'SÍ' : 'NO');
+    console.log('  - productos:', sorteo.productos?.length || 0);
+    if (sorteo.productos && sorteo.productos.length > 0) {
+      console.log('  - Primer producto imagenes:', sorteo.productos[0].imagenes?.length || 0);
+    }
+    console.log('🔍 ========== FIN GET /sorteos/:id ==========');
 
     // Obtener ganadores si el sorteo está finalizado
     if (sorteo.estado === 'finalizado') {
