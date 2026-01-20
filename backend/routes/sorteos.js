@@ -151,7 +151,11 @@ router.get('/:id', async (req, res) => {
       'SELECT * FROM promociones WHERE sorteo_id = ? AND activa = TRUE ORDER BY cantidad_tickets ASC',
       [id]
     );
-    sorteo.promociones = promociones;
+    // Mapear precio_total a precio para compatibilidad con el frontend
+    sorteo.promociones = promociones.map((promo: any) => ({
+      ...promo,
+      precio: promo.precio_total || promo.precio, // Usar precio_total si existe, sino precio
+    }));
     
     // Parsear imágenes si existen
     console.log('🔍 Imágenes en BD (raw) para sorteo', id, ':', sorteo.imagenes);
