@@ -439,18 +439,42 @@ function addMessage(user, message, isAdmin, timestamp) {
 
 function sendMessage() {
     const input = document.getElementById('chatInput');
+    const message = input.value.trim();
+    
+    console.log('🔍 Intentando enviar mensaje:', message);
+    console.log('🔍 currentUser:', currentUser);
+    console.log('🔍 socket:', socket);
+    console.log('🔍 socket conectado?:', socket?.connected);
     
     if (!currentUser) {
+        console.log('⚠️ No hay usuario, abriendo modal de login');
         openLoginModal();
         return;
     }
 
-    if (input.value.trim() && socket) {
-        socket.emit('chat-message', {
-            message: input.value.trim()
-        });
-        input.value = '';
+    if (!message) {
+        console.log('⚠️ Mensaje vacío');
+        return;
     }
+
+    if (!socket) {
+        console.error('❌ Socket no inicializado');
+        alert('Error: No se pudo conectar al chat. Por favor, recarga la página.');
+        return;
+    }
+
+    if (!socket.connected) {
+        console.error('❌ Socket no conectado');
+        alert('Error: No estás conectado al chat. Por favor, recarga la página.');
+        return;
+    }
+
+    console.log('✅ Enviando mensaje al servidor...');
+    socket.emit('chat-message', {
+        message: message
+    });
+    input.value = '';
+    console.log('✅ Mensaje enviado');
 }
 
 function updateChatBadge(count) {
