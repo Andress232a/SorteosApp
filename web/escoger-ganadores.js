@@ -1,5 +1,8 @@
 // Configuración
-const isProduction = window.location.hostname.includes('vercel.app') || window.location.hostname.includes('railway.app') || window.location.hostname.includes('render.com');
+const isProduction = window.location.hostname.includes('vercel.app') || 
+                     window.location.hostname.includes('railway.app') || 
+                     window.location.hostname.includes('render.com') ||
+                     window.location.hostname.includes('premioclick.cl');
 const API_URL = isProduction 
     ? window.location.origin + '/api'
     : window.location.origin.replace(/:\d+$/, ':3001') + '/api';

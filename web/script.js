@@ -1,6 +1,9 @@
 // Configuración
-// Detectar si estamos en producción (Vercel) o desarrollo local
-const isProduction = window.location.hostname.includes('vercel.app') || window.location.hostname.includes('railway.app') || window.location.hostname.includes('render.com');
+// Detectar si estamos en producción (Vercel, Railway, Render, o premioclick.cl) o desarrollo local
+const isProduction = window.location.hostname.includes('vercel.app') || 
+                     window.location.hostname.includes('railway.app') || 
+                     window.location.hostname.includes('render.com') ||
+                     window.location.hostname.includes('premioclick.cl');
 const API_URL = isProduction 
     ? window.location.origin + '/api'  // En producción, usar la misma URL sin puerto
     : window.location.origin.replace(/:\d+$/, ':3001') + '/api';  // En desarrollo, usar puerto 3001
